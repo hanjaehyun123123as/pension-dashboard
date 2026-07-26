@@ -71,12 +71,6 @@ input[type=checkbox]{accent-color:var(--acc)}
   <span class="chip" onclick="preset('에스케이하이닉스, SK하이닉스')">SK하이닉스</span>
 </div>
 <div id="pins"></div>
-<div class="card" id="watchCard" style="display:none;margin-bottom:14px">
-  <h2>⭐ 관심종목 모아보기 <span id="watchStat" style="font-weight:400;color:var(--tx2)"></span>
-  <span style="float:right;font-weight:400"><span class="chip" onclick="resetWatch()">기본목록 복원</span></span></h2>
-  <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px"><table class="sumtable" id="watchT"></table></div>
-  <div style="margin-top:10px;max-width:920px" id="watchChart"></div>
-</div>
 <div class="grid">
   <div class="card">
     <h2 id="sumTitle">월별 가입자수 합계</h2>
@@ -86,6 +80,21 @@ input[type=checkbox]{accent-color:var(--acc)}
   <div class="card">
     <h2>매칭 사업장 <span id="stat"></span></h2>
     <div id="list"></div>
+  </div>
+</div>
+<div class="card" id="watchCard" style="margin-bottom:14px">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <h2 style="margin:0">⭐ 관심종목</h2>
+    <span id="watchGroups"></span>
+    <span class="chip" onclick="addGroup()">＋ 그룹 추가</span>
+    <span style="flex:1"></span>
+    <span id="watchStat" style="color:var(--tx2);font-size:12px"></span>
+    <span class="chip" id="watchToggle" onclick="toggleWatch()">펼치기 ▾</span>
+  </div>
+  <div id="watchBody" style="display:none;margin-top:10px">
+    <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px"><table class="sumtable" id="watchT"></table></div>
+    <div style="margin-top:10px;max-width:920px" id="watchChart"></div>
+    <div style="margin-top:8px"><span class="chip" onclick="resetWatch()">현재 그룹을 기본목록(830개)으로 복원</span></div>
   </div>
 </div>
 </div>
@@ -307,12 +316,22 @@ function renderPins(){
 }
 // ===== 관심종목 =====
 const DEFAULT_WATCH=__WATCH__;
-const WKEY='pd_watch2';
-function getWatch(){
-  try{const s=localStorage.getItem(WKEY);if(s)return JSON.parse(s);}catch(e){}
-  return DEFAULT_WATCH.map(e=>({label:e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));
+const WKEY='pd_watch3';
+function defaultItems(){return DEFAULT_WATCH.map(e=>({label:e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));}
+function getW(){
+  try{const s=localStorage.getItem(WKEY);if(s){const w=JSON.parse(s);if(w.groups&&w.groups.length)return w;}}catch(e){}
+  try{const old=localStorage.getItem('pd_watch2');if(old)return{groups:[{name:'관심종목 1',items:JSON.parse(old)}],active:0};}catch(e){}
+  return{groups:[{name:'관심종목 1',items:defaultItems()}],active:0};
 }
-function setWatch(w){try{localStorage.setItem(WKEY,JSON.stringify(w));}catch(e){}}
+function setW(w){try{localStorage.setItem(WKEY,JSON.stringify(w));}catch(e){}}
+function watchOpen(){try{return localStorage.getItem('pd_watch_open')==='1';}catch(e){return false;}}
+function toggleWatch(){try{localStorage.setItem('pd_watch_open',watchOpen()?'0':'1');}catch(e){}renderWatch();}
+let watchSort={key:'m',col:NM-1,dir:-1};
+function sortWatch(key,col){
+  if(watchSort.key===key&&watchSort.col===col)watchSort.dir=-watchSort.dir;
+  else watchSort={key:key,col:col,dir:key==='n'?1:-1};
+  renderWatch();
+}
 function watchRows(e){
   if(e.mode==='exact'){
     let r=nameIndex.get(normalize(e.query))||[];
@@ -332,19 +351,42 @@ function addWatch(){
   document.querySelectorAll('#list input[type=checkbox][data-i]:not(:checked)').forEach(c=>un.add(names[+c.dataset.i]+'|'+bizs[+c.dataset.i]));
   let label=curLabel;
   try{label=prompt('관심종목 이름을 정해주세요', curLabel.split(',')[0].trim())||curLabel;}catch(e){}
-  const w=getWatch();
-  w.unshift({label:label,query:document.getElementById('q').value,excl:[...un],mode:'search'});
-  setWatch(w);renderWatch();
+  const w=getW();
+  w.groups[w.active].items.unshift({label:label,query:document.getElementById('q').value,excl:[...un],mode:'search'});
+  setW(w);
+  try{localStorage.setItem('pd_watch_open','1');}catch(e){}
+  renderWatch();
   document.getElementById('watchCard').scrollIntoView({behavior:'smooth'});
 }
 function delWatch(idx){
-  const w=getWatch();w.splice(idx,1);setWatch(w);renderWatch();
+  const w=getW();w.groups[w.active].items.splice(idx,1);setW(w);renderWatch();
+}
+function addGroup(){
+  const w=getW();
+  let name='관심종목 '+(w.groups.length+1);
+  try{name=prompt('새 그룹 이름',name)||name;}catch(e){}
+  w.groups.push({name:name,items:[]});
+  w.active=w.groups.length-1;
+  setW(w);
+  try{localStorage.setItem('pd_watch_open','1');}catch(e){}
+  renderWatch();
+}
+function selGroup(i){const w=getW();w.active=i;setW(w);renderWatch();}
+function delGroup(i){
+  const w=getW();
+  if(!confirm('"'+w.groups[i].name+'" 그룹을 삭제할까요?'))return;
+  w.groups.splice(i,1);
+  if(!w.groups.length)w.groups=[{name:'관심종목 1',items:[]}];
+  if(w.active>=w.groups.length)w.active=w.groups.length-1;
+  setW(w);renderWatch();
 }
 function resetWatch(){
-  if(confirm('관심종목을 기본 목록으로 되돌릴까요?')){try{localStorage.removeItem(WKEY);}catch(e){}renderWatch();}
+  if(!confirm('현재 그룹을 기본 목록(830개 법인)으로 되돌릴까요?'))return;
+  const w=getW();w.groups[w.active].items=defaultItems();setW(w);renderWatch();
 }
 function openWatch(idx){
-  const e=getWatch()[idx];
+  const w=getW();
+  const e=w.groups[w.active].items[idx];
   document.getElementById('q').value=e.query;
   run();
   if(e.excl&&e.excl.length){
@@ -354,30 +396,57 @@ function openWatch(idx){
     });
     recalc();
   }
-  window.scrollTo({top:document.querySelector('.grid').offsetTop-10,behavior:'smooth'});
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 const WCOL=['#ffb84d','#3ddc84','#ff6b6b','#c792ea','#89ddff','#f78c6c','#c3e88d','#82aaff'];
 function renderWatch(){
-  const w=getWatch();
-  const card=document.getElementById('watchCard');
-  if(!w.length){card.style.display='none';return;}
-  card.style.display='block';
-  const items=w.map((e,idx)=>({e,idx,sums:sumsOf(watchRows(e))}));
-  items.sort((a,b)=>b.sums[NM-1]-a.sums[NM-1]);
-  let h='<tr><th style="text-align:left">종목</th>'+MONTHS.map(m=>'<th>'+m+'</th>').join('')+'<th>전월비</th><th></th></tr>';
+  const w=getW();
+  const g=w.groups[w.active];
+  document.getElementById('watchGroups').innerHTML=w.groups.map((gr,i)=>
+    '<span class="chip" style="'+(i===w.active?'border-color:var(--acc);color:var(--tx);background:var(--panel2)':'')+'" onclick="selGroup('+i+')">'+esc(gr.name)+' <span onclick="event.stopPropagation();delGroup('+i+')" style="color:var(--red)">✕</span></span>').join(' ');
+  const open=watchOpen();
+  document.getElementById('watchToggle').textContent=open?'접기 ▴':'펼치기 ▾';
+  document.getElementById('watchBody').style.display=open?'block':'none';
+  document.getElementById('watchStat').textContent=g.items.length+'개';
+  if(!open)return;
+  if(!g.items.length){
+    document.getElementById('watchT').innerHTML='<tr><td style="color:var(--tx2);font-weight:400;text-align:left;padding:12px">비어 있음 — 검색 후 "⭐ 관심종목 추가"를 누르면 이 그룹에 담깁니다</td></tr>';
+    document.getElementById('watchChart').innerHTML='';
+    return;
+  }
+  const items=g.items.map((e,idx)=>{
+    const sums=sumsOf(watchRows(e));
+    const d=sums[NM-1]-sums[NM-2];
+    const mom=sums[NM-2]>0?(d/sums[NM-2]*100):null;
+    return {e,idx,sums,d,mom};
+  });
+  const dir=watchSort.dir;
+  items.sort((a,b)=>{
+    let va,vb;
+    if(watchSort.key==='m'){va=a.sums[watchSort.col];vb=b.sums[watchSort.col];}
+    else if(watchSort.key==='d'){va=a.d;vb=b.d;}
+    else if(watchSort.key==='p'){va=(a.mom===null?-1e18:a.mom);vb=(b.mom===null?-1e18:b.mom);}
+    else{return dir*String(a.e.label).localeCompare(String(b.e.label),'ko');}
+    return dir*((va<vb)?-1:(va>vb)?1:0);
+  });
+  const arrow=(k,c)=>watchSort.key===k&&watchSort.col===c?(watchSort.dir<0?' ▼':' ▲'):'';
+  let h='<tr><th style="text-align:left;cursor:pointer" onclick="sortWatch(\'n\',0)">종목'+arrow('n',0)+'</th>';
+  h+=MONTHS.map((m,j)=>'<th style="cursor:pointer" onclick="sortWatch(\'m\','+j+')">'+m+arrow('m',j)+'</th>').join('');
+  h+='<th style="cursor:pointer" onclick="sortWatch(\'d\',0)">전월비'+arrow('d',0)+'</th>';
+  h+='<th style="cursor:pointer" onclick="sortWatch(\'p\',0)">MoM%'+arrow('p',0)+'</th><th></th></tr>';
   items.forEach((it,rank)=>{
     const col=rank<WCOL.length?WCOL[rank]:'var(--tx)';
-    const d=it.sums[NM-1]-it.sums[NM-2];
     h+='<tr style="cursor:pointer" onclick="openWatch('+it.idx+')" title="클릭하면 상세 검색으로 이동">';
     const sub=(it.e.addr?it.e.addr:'')+(it.e.biz?' · '+it.e.biz:'');
     h+='<td style="text-align:left;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis;color:'+(rank<WCOL.length?col:'var(--tx)')+'">'+(rank<WCOL.length?'● ':'')+esc(it.e.label)+(sub?' <span style="color:var(--tx2);font-size:10.5px;font-weight:400">'+esc(sub)+'</span>':'')+'</td>';
     h+=it.sums.map(v=>'<td>'+(v?fmt(v):'')+'</td>').join('');
-    h+='<td class="'+(d>0?'up':d<0?'dn':'')+'" style="font-weight:700">'+(d>0?'+':'')+fmt(d)+'</td>';
+    h+='<td class="'+(it.d>0?'up':it.d<0?'dn':'')+'" style="font-weight:700">'+(it.d>0?'+':'')+fmt(it.d)+'</td>';
+    h+='<td class="'+(it.d>0?'up':it.d<0?'dn':'')+'" style="font-weight:700">'+(it.mom===null?'–':(it.mom>0?'+':'')+it.mom.toFixed(1)+'%')+'</td>';
     h+='<td onclick="event.stopPropagation();delWatch('+it.idx+')" style="color:var(--red);cursor:pointer" title="삭제">✕</td></tr>';
   });
   document.getElementById('watchT').innerHTML=h;
   document.getElementById('watchChart').innerHTML=chartSVG(items.slice(0,8).map((it,r)=>({label:it.e.label,sums:it.sums,col:WCOL[r]})));
-  document.getElementById('watchStat').textContent=w.length+'개 등록 · 표는 최근월 인원순 · 차트는 상위 8개';
+  document.getElementById('watchStat').textContent=g.items.length+'개 · 열 제목 클릭 = 정렬 · 차트는 상위 8개';
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
