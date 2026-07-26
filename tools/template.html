@@ -414,11 +414,13 @@ function renderWatch(){
     document.getElementById('watchChart').innerHTML='';
     return;
   }
+  const YIDX=(function(){const cur=+MONTHS[NM-1].split('.')[0];const i=MONTHS.indexOf((cur-1)+'.12');return i>=0?i:0;})();
   const items=g.items.map((e,idx)=>{
     const sums=sumsOf(watchRows(e));
     const d=sums[NM-1]-sums[NM-2];
     const mom=sums[NM-2]>0?(d/sums[NM-2]*100):null;
-    return {e,idx,sums,d,mom};
+    const ytd=sums[YIDX]>0?((sums[NM-1]-sums[YIDX])/sums[YIDX]*100):null;
+    return {e,idx,sums,d,mom,ytd};
   });
   const dir=watchSort.dir;
   items.sort((a,b)=>{
@@ -426,6 +428,7 @@ function renderWatch(){
     if(watchSort.key==='m'){va=a.sums[watchSort.col];vb=b.sums[watchSort.col];}
     else if(watchSort.key==='d'){va=a.d;vb=b.d;}
     else if(watchSort.key==='p'){va=(a.mom===null?-1e18:a.mom);vb=(b.mom===null?-1e18:b.mom);}
+    else if(watchSort.key==='y'){va=(a.ytd===null?-1e18:a.ytd);vb=(b.ytd===null?-1e18:b.ytd);}
     else{return dir*String(a.e.label).localeCompare(String(b.e.label),'ko');}
     return dir*((va<vb)?-1:(va>vb)?1:0);
   });
@@ -433,7 +436,8 @@ function renderWatch(){
   let h='<tr><th style="text-align:left;cursor:pointer" onclick="sortWatch(\'n\',0)">종목'+arrow('n',0)+'</th>';
   h+=MONTHS.map((m,j)=>'<th style="cursor:pointer" onclick="sortWatch(\'m\','+j+')">'+m+arrow('m',j)+'</th>').join('');
   h+='<th style="cursor:pointer" onclick="sortWatch(\'d\',0)">전월비'+arrow('d',0)+'</th>';
-  h+='<th style="cursor:pointer" onclick="sortWatch(\'p\',0)">MoM%'+arrow('p',0)+'</th><th></th></tr>';
+  h+='<th style="cursor:pointer" onclick="sortWatch(\'p\',0)">MoM%'+arrow('p',0)+'</th>';
+  h+='<th style="cursor:pointer" onclick="sortWatch(\'y\',0)" title="연초(전년 12월) 대비 증감률">YTD%'+arrow('y',0)+'</th><th></th></tr>';
   items.forEach((it,rank)=>{
     const col=rank<WCOL.length?WCOL[rank]:'var(--tx)';
     h+='<tr style="cursor:pointer" onclick="openWatch('+it.idx+')" title="클릭하면 상세 검색으로 이동">';
@@ -442,6 +446,7 @@ function renderWatch(){
     h+=it.sums.map(v=>'<td>'+(v?fmt(v):'')+'</td>').join('');
     h+='<td class="'+(it.d>0?'up':it.d<0?'dn':'')+'" style="font-weight:700">'+(it.d>0?'+':'')+fmt(it.d)+'</td>';
     h+='<td class="'+(it.d>0?'up':it.d<0?'dn':'')+'" style="font-weight:700">'+(it.mom===null?'–':(it.mom>0?'+':'')+it.mom.toFixed(1)+'%')+'</td>';
+    h+='<td class="'+(it.ytd>0?'up':it.ytd<0?'dn':'')+'" style="font-weight:700">'+(it.ytd===null?'–':(it.ytd>0?'+':'')+it.ytd.toFixed(1)+'%')+'</td>';
     h+='<td onclick="event.stopPropagation();delWatch('+it.idx+')" style="color:var(--red);cursor:pointer" title="삭제">✕</td></tr>';
   });
   document.getElementById('watchT').innerHTML=h;
