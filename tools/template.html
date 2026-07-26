@@ -60,6 +60,7 @@ input[type=checkbox]{accent-color:var(--acc)}
   <input id="q" placeholder="예: 세보엠이씨   ·   쉼표로 여러 표기 OR 검색: 케이씨이앤씨, 케이씨이앤이   ·   제외는 -단어">
   <button onclick="run()">검색</button>
   <button class="ghost" onclick="pinCur()">＋ 비교에 추가</button>
+  <button class="ghost" onclick="addWatch()">⭐ 관심종목 추가</button>
 </div>
 <div class="hint">공백·(주)·주식회사·괄호는 무시되고 <b>앤↔엔</b>은 같은 글자로 취급합니다 (이앤씨=이엔씨). 쉼표(,)로 여러 키워드 OR, 앞에 -를 붙이면 제외.</div>
 <div class="chips">
@@ -70,6 +71,12 @@ input[type=checkbox]{accent-color:var(--acc)}
   <span class="chip" onclick="preset('에스케이하이닉스, SK하이닉스')">SK하이닉스</span>
 </div>
 <div id="pins"></div>
+<div class="card" id="watchCard" style="display:none;margin-bottom:14px">
+  <h2>⭐ 관심종목 모아보기 <span id="watchStat" style="font-weight:400;color:var(--tx2)"></span>
+  <span style="float:right;font-weight:400"><span class="chip" onclick="resetWatch()">기본목록 복원</span></span></h2>
+  <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px"><table class="sumtable" id="watchT"></table></div>
+  <div style="margin-top:10px;max-width:920px" id="watchChart"></div>
+</div>
 <div class="grid">
   <div class="card">
     <h2 id="sumTitle">월별 가입자수 합계</h2>
@@ -86,7 +93,7 @@ input[type=checkbox]{accent-color:var(--acc)}
 <script>
 const MONTHS=['22.12','23.12','24.12','25.12','26.1','26.2','26.3','26.4','26.5','26.6'];
 const NM=MONTHS.length;
-let names=[],addrs=[],bizs=[],vals=null,norm=[],N=0;
+let names=[],addrs=[],bizs=[],vals=null,norm=[],N=0,nameIndex=new Map();
 let curMatch=[],curSums=null,curLabel='',pins=[];
 const PINCOL=['#ffb84d','#3ddc84','#ff6b6b','#c792ea','#89ddff'];
 
@@ -149,33 +156,45 @@ async function boot2(u8){
     for(let i=0;i<N;i++){
       const p=lines[i].split('\t');
       names.push(p[0]);bizs.push(p[1]);addrs.push(p[2]);
-      norm.push(normalize(p[0]));
+      const nn=normalize(p[0]);
+      norm.push(nn);
+      const arr=nameIndex.get(nn);
+      if(arr)arr.push(i);else nameIndex.set(nn,[i]);
       for(let j=0;j<NM;j++){const v=p[3+j];if(v!=='')vals[i*NM+j]=+v;}
     }
     document.getElementById('loading').style.display='none';
     document.getElementById('main').style.display='block';
     preset('세보엠이씨');
+    loadPins();
+    if(pins.length){renderPins();renderSum();renderChart();}
+    renderWatch();
   }catch(e){
     document.getElementById('loading').textContent='로딩 실패: '+e+' (크롬/엣지 최신 버전에서 열어주세요)';
   }
 }
 function preset(s){document.getElementById('q').value=s;run();}
-function run(){
-  const raw=document.getElementById('q').value.trim();
-  if(!raw)return;
+function matchRows(raw,excl){
   const inc=[],exc=[];
   raw.split(',').map(t=>t.trim()).filter(t=>t).forEach(t=>{
     if(t[0]==='-')exc.push(normalize(t.slice(1)));else inc.push(normalize(t));
   });
-  if(!inc.length)return;
-  curMatch=[];
+  if(!inc.length)return[];
+  const es=new Set(excl||[]);
+  const out=[];
   for(let i=0;i<N;i++){
     const n=norm[i];
     let hit=false;
     for(const k of inc)if(n.includes(k)){hit=true;break;}
     if(hit)for(const k of exc)if(n.includes(k)){hit=false;break;}
-    if(hit)curMatch.push(i);
+    if(hit&&es.size&&es.has(names[i]+'|'+bizs[i]))hit=false;
+    if(hit)out.push(i);
   }
+  return out;
+}
+function run(){
+  const raw=document.getElementById('q').value.trim();
+  if(!raw)return;
+  curMatch=matchRows(raw,null);
   curLabel=raw;
   // sort by 26.5 desc, then row max desc
   curMatch.sort((a,b)=>{
@@ -217,6 +236,9 @@ function renderSum(){
 }
 function renderChart(){
   const series=[{label:curLabel,sums:curSums,col:'#4da3ff'}].concat(pins.map((p,i)=>({label:p.label,sums:p.sums,col:PINCOL[i%5]})));
+  document.getElementById('chart').innerHTML=chartSVG(series);
+}
+function chartSVG(series){
   const W=560,H=260,L=56,R=12,T=14,B=30;
   let mx=0;series.forEach(s=>s.sums.forEach(v=>mx=Math.max(mx,v)));
   if(mx===0)mx=1;
@@ -232,7 +254,7 @@ function renderChart(){
     g+='<polyline points="'+pts+'" fill="none" stroke="'+s.col+'" stroke-width="2.2"/>';
     s.sums.forEach((v,j)=>{g+='<circle cx="'+x(j)+'" cy="'+y(v)+'" r="3" fill="'+s.col+'"><title>'+esc(s.label)+' '+MONTHS[j]+': '+fmt(v)+'</title></circle>';});
   });
-  document.getElementById('chart').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%">'+g+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%">'+g+'</svg>';
 }
 const LIM=800;
 function renderList(){
@@ -255,12 +277,107 @@ function toggleAll(on){
 }
 function pinCur(){
   if(!curSums)return;
-  pins.push({label:curLabel,sums:curSums.slice()});
+  const un=new Set();
+  document.querySelectorAll('#list input[type=checkbox][data-i]:not(:checked)').forEach(c=>un.add(names[+c.dataset.i]+'|'+bizs[+c.dataset.i]));
+  pins.push({label:curLabel,query:document.getElementById('q').value,excl:[...un],sums:curSums.slice()});
   renderPins();renderSum();renderChart();
 }
 function delPin(i){pins.splice(i,1);renderPins();renderSum();renderChart();}
+function savePins(){
+  try{localStorage.setItem('pd_pins',JSON.stringify(pins.map(p=>({label:p.label,query:p.query,excl:p.excl}))));}catch(e){}
+  const el=document.getElementById('pinSaveBtn');
+  if(el){el.textContent='저장됨 ✓';el.style.color='var(--grn)';setTimeout(()=>{el.textContent='💾 비교목록 저장';el.style.color='';},1500);}
+}
+function clearPins(){
+  if(!confirm('비교 목록을 모두 지울까요? (저장해둔 목록도 삭제됩니다)'))return;
+  pins=[];try{localStorage.removeItem('pd_pins');}catch(e){}
+  renderPins();renderSum();renderChart();
+}
+function loadPins(){
+  try{
+    const s=localStorage.getItem('pd_pins');if(!s)return;
+    pins=JSON.parse(s).map(p=>({label:p.label,query:p.query,excl:p.excl,
+      sums:p.query?sumsOf(matchRows(p.query,p.excl)):new Array(NM).fill(0)}));
+  }catch(e){}
+}
 function renderPins(){
-  document.getElementById('pins').innerHTML=pins.map((p,i)=>'<span class="pin"><span class="dot" style="background:'+PINCOL[i%5]+'"></span>'+esc(p.label)+'<span class="x" onclick="delPin('+i+')">✕</span></span>').join('');
+  let h=pins.map((p,i)=>'<span class="pin"><span class="dot" style="background:'+PINCOL[i%5]+'"></span>'+esc(p.label)+'<span class="x" onclick="delPin('+i+')">✕</span></span>').join('');
+  if(pins.length)h+='<span class="chip" id="pinSaveBtn" onclick="savePins()" title="저장하면 다음에 열 때 자동 복원되고, 새 데이터로 다시 계산됩니다">💾 비교목록 저장</span> <span class="chip" onclick="clearPins()">모두 지우기</span>';
+  document.getElementById('pins').innerHTML=h;
+}
+// ===== 관심종목 =====
+const DEFAULT_WATCH=__WATCH__;
+const WKEY='pd_watch2';
+function getWatch(){
+  try{const s=localStorage.getItem(WKEY);if(s)return JSON.parse(s);}catch(e){}
+  return DEFAULT_WATCH.map(e=>({label:e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));
+}
+function setWatch(w){try{localStorage.setItem(WKEY,JSON.stringify(w));}catch(e){}}
+function watchRows(e){
+  if(e.mode==='exact'){
+    let r=nameIndex.get(normalize(e.query))||[];
+    if(e.biz)r=r.filter(i=>bizs[i]===e.biz);
+    return r;
+  }
+  return matchRows(e.query,e.excl);
+}
+function sumsOf(rows){
+  const s=new Array(NM).fill(0);
+  for(const i of rows)for(let j=0;j<NM;j++){const v=vals[i*NM+j];if(v>0)s[j]+=v;}
+  return s;
+}
+function addWatch(){
+  if(!curLabel)return;
+  const un=new Set();
+  document.querySelectorAll('#list input[type=checkbox][data-i]:not(:checked)').forEach(c=>un.add(names[+c.dataset.i]+'|'+bizs[+c.dataset.i]));
+  let label=curLabel;
+  try{label=prompt('관심종목 이름을 정해주세요', curLabel.split(',')[0].trim())||curLabel;}catch(e){}
+  const w=getWatch();
+  w.unshift({label:label,query:document.getElementById('q').value,excl:[...un],mode:'search'});
+  setWatch(w);renderWatch();
+  document.getElementById('watchCard').scrollIntoView({behavior:'smooth'});
+}
+function delWatch(idx){
+  const w=getWatch();w.splice(idx,1);setWatch(w);renderWatch();
+}
+function resetWatch(){
+  if(confirm('관심종목을 기본 목록으로 되돌릴까요?')){try{localStorage.removeItem(WKEY);}catch(e){}renderWatch();}
+}
+function openWatch(idx){
+  const e=getWatch()[idx];
+  document.getElementById('q').value=e.query;
+  run();
+  if(e.excl&&e.excl.length){
+    const es=new Set(e.excl);
+    document.querySelectorAll('#list input[type=checkbox][data-i]').forEach(c=>{
+      if(es.has(names[+c.dataset.i]+'|'+bizs[+c.dataset.i]))c.checked=false;
+    });
+    recalc();
+  }
+  window.scrollTo({top:document.querySelector('.grid').offsetTop-10,behavior:'smooth'});
+}
+const WCOL=['#ffb84d','#3ddc84','#ff6b6b','#c792ea','#89ddff','#f78c6c','#c3e88d','#82aaff'];
+function renderWatch(){
+  const w=getWatch();
+  const card=document.getElementById('watchCard');
+  if(!w.length){card.style.display='none';return;}
+  card.style.display='block';
+  const items=w.map((e,idx)=>({e,idx,sums:sumsOf(watchRows(e))}));
+  items.sort((a,b)=>b.sums[NM-1]-a.sums[NM-1]);
+  let h='<tr><th style="text-align:left">종목</th>'+MONTHS.map(m=>'<th>'+m+'</th>').join('')+'<th>전월비</th><th></th></tr>';
+  items.forEach((it,rank)=>{
+    const col=rank<WCOL.length?WCOL[rank]:'var(--tx)';
+    const d=it.sums[NM-1]-it.sums[NM-2];
+    h+='<tr style="cursor:pointer" onclick="openWatch('+it.idx+')" title="클릭하면 상세 검색으로 이동">';
+    const sub=(it.e.addr?it.e.addr:'')+(it.e.biz?' · '+it.e.biz:'');
+    h+='<td style="text-align:left;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis;color:'+(rank<WCOL.length?col:'var(--tx)')+'">'+(rank<WCOL.length?'● ':'')+esc(it.e.label)+(sub?' <span style="color:var(--tx2);font-size:10.5px;font-weight:400">'+esc(sub)+'</span>':'')+'</td>';
+    h+=it.sums.map(v=>'<td>'+(v?fmt(v):'')+'</td>').join('');
+    h+='<td class="'+(d>0?'up':d<0?'dn':'')+'" style="font-weight:700">'+(d>0?'+':'')+fmt(d)+'</td>';
+    h+='<td onclick="event.stopPropagation();delWatch('+it.idx+')" style="color:var(--red);cursor:pointer" title="삭제">✕</td></tr>';
+  });
+  document.getElementById('watchT').innerHTML=h;
+  document.getElementById('watchChart').innerHTML=chartSVG(items.slice(0,8).map((it,r)=>({label:it.e.label,sums:it.sums,col:WCOL[r]})));
+  document.getElementById('watchStat').textContent=w.length+'개 등록 · 표는 최근월 인원순 · 차트는 상위 8개';
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
