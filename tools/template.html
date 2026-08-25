@@ -45,7 +45,7 @@ input[type=checkbox]{accent-color:var(--acc)}
 </head>
 <body>
 <h1>국민연금 사업장 인원 검색 대시보드</h1>
-<div class="sub">사업장명 키워드로 계열 사업장(본사·현장·일용 등)을 묶어 월별 가입자수 합계를 봅니다 · 자료: 22.12 ~ 26.5</div>
+<div class="sub">사업장명 키워드로 계열 사업장(본사·현장·일용 등)을 묶어 월별 가입자수 합계를 봅니다 · 자료: 22.12 ~ 26.7</div>
 <div id="gate" style="display:none;max-width:340px;margin:60px auto;text-align:center">
   <div class="card" style="padding:24px">
     <div style="font-size:15px;margin-bottom:12px">🔒 비밀번호를 입력하세요</div>
@@ -54,7 +54,7 @@ input[type=checkbox]{accent-color:var(--acc)}
     <div id="pwmsg" style="color:var(--red);font-size:12px;margin-top:8px;min-height:16px"></div>
   </div>
 </div>
-<div id="loading" style="display:none">데이터 로딩 중… (86만 사업장, 몇 초 걸립니다)</div>
+<div id="loading" style="display:none">데이터 로딩 중… (89만 사업장, 몇 초 걸립니다)</div>
 <div id="main">
 <div class="bar">
   <input id="q" placeholder="예: 세보엠이씨   ·   쉼표로 여러 표기 OR 검색: 케이씨이앤씨, 케이씨이앤이   ·   제외는 -단어">
@@ -100,7 +100,7 @@ input[type=checkbox]{accent-color:var(--acc)}
 </div>
 <script id="D" type="text/plain">__B64__</script>
 <script>
-const MONTHS=['22.12','23.12','24.12','25.12','26.1','26.2','26.3','26.4','26.5','26.6'];
+const MONTHS=['22.12','23.12','24.12','25.12','26.1','26.2','26.3','26.4','26.5','26.6','26.7'];
 const NM=MONTHS.length;
 let names=[],addrs=[],bizs=[],vals=null,norm=[],N=0,nameIndex=new Map();
 let curMatch=[],curSums=null,curLabel='',pins=[];
