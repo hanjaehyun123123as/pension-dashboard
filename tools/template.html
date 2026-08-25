@@ -87,6 +87,7 @@ input[type=checkbox]{accent-color:var(--acc)}
     <h2 style="margin:0">⭐ 관심종목</h2>
     <span id="watchGroups"></span>
     <span class="chip" onclick="addGroup()">＋ 그룹 추가</span>
+    <span class="chip" onclick="copyNames()" title="표에 보이는 순서대로 회사명만 복사">📋 회사명 복사</span>
     <span class="chip" onclick="exportGroup()" title="현재 그룹을 코드로 뽑아 보관/전송">📤 내보내기</span>
     <span class="chip" onclick="showImport()" title="받은 코드를 붙여넣어 그룹 복원">📥 불러오기</span>
     <span style="flex:1"></span>
@@ -333,7 +334,7 @@ function getW(){
 function setW(w){try{localStorage.setItem(WKEY,JSON.stringify(w));}catch(e){}}
 function watchOpen(){try{return localStorage.getItem('pd_watch_open')==='1';}catch(e){return false;}}
 function toggleWatch(){try{localStorage.setItem('pd_watch_open',watchOpen()?'0':'1');}catch(e){}renderWatch();}
-let watchSort={key:'m',col:NM-1,dir:-1};
+let watchSort={key:'m',col:NM-1,dir:-1},lastItems=[];
 function sortWatch(key,col){
   if(watchSort.key===key&&watchSort.col===col)watchSort.dir=-watchSort.dir;
   else watchSort={key:key,col:col,dir:key==='n'?1:-1};
@@ -390,6 +391,17 @@ async function unGzB64(b64){
   return await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
 }
 let ioMode='';
+function copyNames(){
+  const w=getW(),g=w.groups[w.active];
+  if(!g.items.length){alert('이 그룹은 비어 있습니다.');return;}
+  let list=lastItems.length?lastItems.map(it=>it.e.label):g.items.map(e=>e.label);
+  ioMode='export';
+  document.getElementById('wIO').style.display='block';
+  document.getElementById('wIOmsg').innerHTML='<b>'+esc(g.name)+'</b> 회사명 '+list.length+'개입니다 (표에 보이는 정렬 순서). 복사해서 엑셀·메모장에 붙여넣으세요.';
+  document.getElementById('wIOact').textContent='복사하기';
+  const ta=document.getElementById('wIOtext');
+  ta.value=list.join(String.fromCharCode(10));ta.select();
+}
 async function exportGroup(){
   const w=getW(),g=w.groups[w.active];
   if(!g.items.length){alert('이 그룹은 비어 있습니다.');return;}
@@ -517,6 +529,7 @@ function renderWatch(){
     h+='<td class="'+(it.ytd>0?'up':it.ytd<0?'dn':'')+'" style="font-weight:700">'+(it.ytd===null?'–':(it.ytd>0?'+':'')+it.ytd.toFixed(1)+'%')+'</td>';
     h+='<td onclick="event.stopPropagation();delWatch('+it.idx+')" style="color:var(--red);cursor:pointer" title="삭제">✕</td></tr>';
   });
+  lastItems=items;
   document.getElementById('watchT').innerHTML=h;
   document.getElementById('watchChart').innerHTML=chartSVG(items.slice(0,8).map((it,r)=>({label:it.e.label,sums:it.sums,col:WCOL[r]})));
   document.getElementById('watchStat').textContent=g.items.length+'개 · 열 제목 클릭 = 정렬 · 차트는 상위 8개';
