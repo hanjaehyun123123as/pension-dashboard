@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 TPL  = open('template.html', encoding='utf-8').read()
-W830 = open('default_watch.json', encoding='utf-8').read()
+GROUPS = open('groups.json', encoding='utf-8').read()
 GZ   = open('data.gz','rb').read()
 
 def enc(gz, pw=b'4618'):
@@ -14,7 +14,7 @@ def enc(gz, pw=b'4618'):
     return salt + iv + AESGCM(key).encrypt(iv, gz, None)
 
 # 1) 공개 사이트 (암호 4618)
-t = TPL.replace('__WATCH__', W830)
+t = TPL.replace('__GROUPS__', GROUPS)
 p1 = r"C:\Users\123\Documents\pension-dashboard\index.html"
 open(p1,'w',encoding='utf-8').write(t.replace('__ENC__','true').replace('__B64__', base64.b64encode(enc(GZ)).decode()))
 # 2) 작업 PC용 (평문)
@@ -22,14 +22,7 @@ p2 = r"C:\Users\123\내 드라이브(wogus4618@gmail.com)\국민연금 클로드
 open(p2,'w',encoding='utf-8').write(t.replace('__ENC__','false').replace('__B64__', base64.b64encode(GZ).decode()))
 
 # 3) 아티팩트 (다중 기본그룹 + 조각 HTML)
-a = TPL.replace("const DEFAULT_WATCH=__WATCH__;", "const DEFAULT_GROUPS=__GROUPS__;")
-a = a.replace("function defaultItems(){return DEFAULT_WATCH.map(e=>({label:e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));}",
-  "function toItems(a){return a.map(e=>({label:e.t||e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));}\n"
-  "function defaultItems(){return toItems(DEFAULT_GROUPS[0].items);}\n"
-  "function defaultGroups(){return DEFAULT_GROUPS.map(g=>({name:g.name,items:toItems(g.items)}));}")
-a = a.replace("  try{const old=localStorage.getItem('pd_watch2');if(old)return{groups:[{name:'관심종목 1',items:JSON.parse(old)}],active:0};}catch(e){}\n"
-              "  return{groups:[{name:'관심종목 1',items:defaultItems()}],active:0};",
-              "  return{groups:defaultGroups(),active:0};")
+a = TPL
 a = a.replace("const WKEY='pd_watch3';", "const WKEY='pd_art_watch1';")
 for x,y in [("localStorage.getItem('pd_watch_open')","localStorage.getItem('pd_art_watch_open')"),
             ("localStorage.setItem('pd_watch_open',","localStorage.setItem('pd_art_watch_open',"),
@@ -50,9 +43,7 @@ frag = frag.replace("<style>", "<style>\n.pdwrap h1,.pdwrap h2{color:var(--tx)}"
 i = frag.index("</style>")+len("</style>")
 frag = frag[:i] + '\n<div class="pdwrap">\n' + frag[i:]
 frag = frag.replace('<script id="D"', '</div>\n<script id="D"', 1)
-groups = [{"name":"관심종목 1","items":json.loads(W830)},
-          {"name":"관심종목 5 (상장사 전체)","items":json.load(open('watch_listed.json',encoding='utf-8'))}]
-frag = frag.replace('__GROUPS__', json.dumps(groups, ensure_ascii=False)).replace('__ENC__','false')
+frag = frag.replace('__GROUPS__', GROUPS).replace('__ENC__','false')
 frag = frag.replace('__B64__', base64.b64encode(open('data_art.gz','rb').read()).decode())
 p3 = os.path.abspath('pension_dashboard_artifact.html')
 open(p3,'w',encoding='utf-8').write(frag)

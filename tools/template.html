@@ -87,6 +87,7 @@ input[type=checkbox]{accent-color:var(--acc)}
     <h2 style="margin:0">⭐ 관심종목</h2>
     <span id="watchGroups"></span>
     <span class="chip" onclick="addGroup()">＋ 그룹 추가</span>
+    <span class="chip" onclick="addDefaultGroups()" title="대시보드에 기본 제공되는 그룹을 가져옵니다">↻ 기본그룹 불러오기</span>
     <span class="chip" onclick="copyNames()" title="표에 보이는 순서대로 회사명만 복사">📋 회사명 복사</span>
     <span class="chip" onclick="exportGroup()" title="현재 그룹을 코드로 뽑아 보관/전송">📤 내보내기</span>
     <span class="chip" onclick="showImport()" title="받은 코드를 붙여넣어 그룹 복원">📥 불러오기</span>
@@ -323,13 +324,14 @@ function renderPins(){
   document.getElementById('pins').innerHTML=h;
 }
 // ===== 관심종목 =====
-const DEFAULT_WATCH=__WATCH__;
+const DEFAULT_GROUPS=__GROUPS__;
 const WKEY='pd_watch3';
-function defaultItems(){return DEFAULT_WATCH.map(e=>({label:e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));}
+function toItems(a){return a.map(e=>({label:e.t||e.l,query:e.l,biz:e.b,addr:e.a,mode:'exact'}));}
+function defaultItems(){return toItems(DEFAULT_GROUPS[0].items);}
+function defaultGroups(){return DEFAULT_GROUPS.map(g=>({name:g.name,items:toItems(g.items)}));}
 function getW(){
   try{const s=localStorage.getItem(WKEY);if(s){const w=JSON.parse(s);if(w.groups&&w.groups.length)return w;}}catch(e){}
-  try{const old=localStorage.getItem('pd_watch2');if(old)return{groups:[{name:'관심종목 1',items:JSON.parse(old)}],active:0};}catch(e){}
-  return{groups:[{name:'관심종목 1',items:defaultItems()}],active:0};
+  return{groups:defaultGroups(),active:0};
 }
 function setW(w){try{localStorage.setItem(WKEY,JSON.stringify(w));}catch(e){}}
 function watchOpen(){try{return localStorage.getItem('pd_watch_open')==='1';}catch(e){return false;}}
@@ -449,6 +451,14 @@ async function ioAction(){
   setW(w);
   try{localStorage.setItem('pd_watch_open','1');}catch(e){}
   document.getElementById('wIO').style.display='none';
+  renderWatch();
+}
+function addDefaultGroups(){
+  const w=getW();const have=w.groups.map(g=>g.name);let added=0;
+  defaultGroups().forEach(g=>{if(have.indexOf(g.name)<0){w.groups.push(g);added++;}});
+  if(!added){alert('기본그룹이 이미 모두 들어와 있습니다.');return;}
+  w.active=w.groups.length-1;setW(w);
+  try{localStorage.setItem('pd_watch_open','1');}catch(e){}
   renderWatch();
 }
 function selGroup(i){const w=getW();w.active=i;setW(w);renderWatch();}
