@@ -31,8 +31,8 @@ for x,y in [("localStorage.getItem('pd_watch_open')","localStorage.getItem('pd_a
             ("localStorage.removeItem('pd_pins')","localStorage.removeItem('pd_art_pins')"),
             ("기본 목록(830개 법인)","기본 목록"),
             ("현재 그룹을 기본목록(830개)으로 복원","현재 그룹을 기본목록으로 복원"),
-            ("· 자료: 22.12 ~ 26.7","· 자료: 22.12 ~ 26.7 · 상장사 전체 포함"),
-            ("데이터 로딩 중… (89만 사업장, 몇 초 걸립니다)","데이터 로딩 중… (33만 사업장, 몇 초 걸립니다)")]:
+            ("· 자료: 22.12 ~ 26.8","· 자료: 22.12 ~ 26.8 · 상장사 전체 포함"),
+            ("데이터 로딩 중… (90만 사업장, 몇 초 걸립니다)","데이터 로딩 중… (34만 사업장, 몇 초 걸립니다)")]:
     a = a.replace(x,y)
 style = re.search(r'<style>.*?</style>', a, re.S).group(0)
 body  = re.search(r'<body>(.*)</body>', a, re.S).group(1)
