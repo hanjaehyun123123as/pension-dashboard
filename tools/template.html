@@ -40,6 +40,8 @@ svg text{fill:var(--tx2);font-size:11px}
 .pin .x{cursor:pointer;color:var(--red);font-weight:700}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 input[type=checkbox]{accent-color:var(--acc)}
+.fin{width:46px;height:20px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--tx);font-size:12px;padding:0 4px;vertical-align:middle;outline:none}
+.fin:focus{border-color:var(--acc)}.fsel{width:auto;padding:0 2px}
 #main{display:none}
 </style>
 </head>
@@ -92,7 +94,8 @@ input[type=checkbox]{accent-color:var(--acc)}
     <span class="chip" onclick="exportGroup()" title="현재 그룹을 코드로 뽑아 보관/전송">📤 내보내기</span>
     <span class="chip" onclick="showImport()" title="받은 코드를 붙여넣어 그룹 복원">📥 불러오기</span>
     <span style="flex:1"></span>
-    <span id="watchStat" style="color:var(--tx2);font-size:12px"></span>
+    <span id="wFilt" style="color:var(--tx2);font-size:12px;white-space:nowrap">직원수 <input id="fMin" class="fin" type="number" min="0" oninput="saveFilt()">명 이상 · 증감률 <select id="fKey" class="fin fsel" onchange="saveFilt()"><option value="p">MoM</option><option value="y">YTD</option></select> <input id="fPct" class="fin" type="number" step="0.1" oninput="saveFilt()">% 이상</span>
+    <span style="color:var(--tx2);font-size:12px;white-space:nowrap"><span id="watchStat"></span><span id="watchHint" style="display:none"> · 열 제목 클릭 = 정렬 · 차트는 상위 8개</span></span>
     <span class="chip" id="watchToggle" onclick="toggleWatch()">펼치기 ▾</span>
   </div>
   <div id="wIO" style="display:none;margin-top:10px">
@@ -489,7 +492,26 @@ function openWatch(idx){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 const WCOL=['#ffb84d','#3ddc84','#ff6b6b','#c792ea','#89ddff','#f78c6c','#c3e88d','#82aaff'];
+function fitHeader(){
+  const h=document.getElementById('watchHint'),tg=document.getElementById('watchToggle'),first=document.querySelector('#watchCard > div').firstElementChild;
+  h.style.display='';
+  if(tg.getBoundingClientRect().top>first.getBoundingClientRect().top+4)h.style.display='none';
+}
+window.addEventListener('resize',()=>{if(N&&watchOpen())fitHeader();});
+let filtLoaded=false;
+function saveFilt(){
+  try{localStorage.setItem('pd_watch_filt',JSON.stringify({m:document.getElementById('fMin').value,k:document.getElementById('fKey').value,p:document.getElementById('fPct').value}));}catch(e){}
+  renderWatch();
+}
+function loadFilt(){
+  filtLoaded=true;
+  try{const f=JSON.parse(localStorage.getItem('pd_watch_filt')||'{}');
+    if(f.m!=null)document.getElementById('fMin').value=f.m;
+    if(f.k)document.getElementById('fKey').value=f.k;
+    if(f.p!=null)document.getElementById('fPct').value=f.p;}catch(e){}
+}
 function renderWatch(){
+  if(!filtLoaded)loadFilt();
   const w=getW();
   const g=w.groups[w.active];
   document.getElementById('watchGroups').innerHTML=w.groups.map((gr,i)=>
@@ -498,6 +520,7 @@ function renderWatch(){
   document.getElementById('watchToggle').textContent=open?'접기 ▴':'펼치기 ▾';
   document.getElementById('watchBody').style.display=open?'block':'none';
   document.getElementById('watchStat').textContent=g.items.length+'개';
+  document.getElementById('watchHint').style.display='none';
   if(!open)return;
   if(!g.items.length){
     document.getElementById('watchT').innerHTML='<tr><td style="color:var(--tx2);font-weight:400;text-align:left;padding:12px">비어 있음 — 검색 후 "⭐ 관심종목 추가"를 누르면 이 그룹에 담깁니다</td></tr>';
@@ -505,13 +528,17 @@ function renderWatch(){
     return;
   }
   const YIDX=(function(){const cur=+MONTHS[NM-1].split('.')[0];const i=MONTHS.indexOf((cur-1)+'.12');return i>=0?i:0;})();
-  const items=g.items.map((e,idx)=>{
+  let items=g.items.map((e,idx)=>{
     const sums=sumsOf(watchRows(e));
     const d=sums[NM-1]-sums[NM-2];
     const mom=sums[NM-2]>0?(d/sums[NM-2]*100):null;
     const ytd=sums[YIDX]>0?((sums[NM-1]-sums[YIDX])/sums[YIDX]*100):null;
     return {e,idx,sums,d,mom,ytd};
   });
+  const fm=parseFloat(document.getElementById('fMin').value),fp=parseFloat(document.getElementById('fPct').value),fk=document.getElementById('fKey').value;
+  const filtering=!isNaN(fm)||!isNaN(fp);
+  if(!isNaN(fm))items=items.filter(it=>it.sums[NM-1]>=fm);
+  if(!isNaN(fp))items=items.filter(it=>{const v=fk==='y'?it.ytd:it.mom;return v!==null&&v>=fp;});
   const dir=watchSort.dir;
   items.sort((a,b)=>{
     let va,vb;
@@ -542,7 +569,9 @@ function renderWatch(){
   lastItems=items;
   document.getElementById('watchT').innerHTML=h;
   document.getElementById('watchChart').innerHTML=chartSVG(items.slice(0,8).map((it,r)=>({label:it.e.label,sums:it.sums,col:WCOL[r]})));
-  document.getElementById('watchStat').textContent=g.items.length+'개 · 열 제목 클릭 = 정렬 · 차트는 상위 8개';
+  if(!items.length)document.getElementById('watchT').innerHTML+='<tr><td colspan="'+(NM+5)+'" style="text-align:left;color:var(--tx2);font-weight:400;padding:12px">조건에 맞는 종목이 없습니다</td></tr>';
+  document.getElementById('watchStat').textContent=(filtering?items.length+'/'+g.items.length:g.items.length)+'개';
+  fitHeader();
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
