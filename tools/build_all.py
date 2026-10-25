@@ -18,7 +18,7 @@ t = TPL.replace('__GROUPS__', GROUPS)
 p1 = r"C:\Users\123\Documents\pension-dashboard\index.html"
 open(p1,'w',encoding='utf-8').write(t.replace('__ENC__','true').replace('__B64__', base64.b64encode(enc(GZ)).decode()))
 # 2) 작업 PC용 (평문)
-p2 = r"C:\Users\123\내 드라이브(wogus4618@gmail.com)\국민연금 클로드 26.4\국민연금_인원검색_대시보드.html"
+p2 = r"C:\Users\123\내 드라이브\claude\국민연금 클로드 26.4\국민연금_인원검색_대시보드.html"
 open(p2,'w',encoding='utf-8').write(t.replace('__ENC__','false').replace('__B64__', base64.b64encode(GZ).decode()))
 
 # 3) 아티팩트 (다중 기본그룹 + 조각 HTML)
@@ -31,8 +31,8 @@ for x,y in [("localStorage.getItem('pd_watch_open')","localStorage.getItem('pd_a
             ("localStorage.removeItem('pd_pins')","localStorage.removeItem('pd_art_pins')"),
             ("기본 목록(830개 법인)","기본 목록"),
             ("현재 그룹을 기본목록(830개)으로 복원","현재 그룹을 기본목록으로 복원"),
-            ("· 자료: 22.12 ~ 26.8","· 자료: 22.12 ~ 26.8 · 상장사 전체 포함"),
-            ("데이터 로딩 중… (90만 사업장, 몇 초 걸립니다)","데이터 로딩 중… (34만 사업장, 몇 초 걸립니다)")]:
+            ("· 자료: 22.12 ~ 26.9","· 자료: 22.12 ~ 26.9 · 상장사 전체 포함"),
+            ("데이터 로딩 중… (91만 사업장, 몇 초 걸립니다)","데이터 로딩 중… (34만 사업장, 몇 초 걸립니다)")]:
     a = a.replace(x,y)
 style = re.search(r'<style>.*?</style>', a, re.S).group(0)
 body  = re.search(r'<body>(.*)</body>', a, re.S).group(1)
@@ -47,6 +47,6 @@ frag = frag.replace('__GROUPS__', GROUPS).replace('__ENC__','false')
 frag = frag.replace('__B64__', base64.b64encode(open('data_art.gz','rb').read()).decode())
 p3 = os.path.abspath('pension_dashboard_artifact.html')
 open(p3,'w',encoding='utf-8').write(frag)
-open(r"C:\Users\123\내 드라이브(wogus4618@gmail.com)\국민연금 클로드 26.4\_art_test.html",'w',encoding='utf-8').write(
+open(r"C:\Users\123\내 드라이브\claude\국민연금 클로드 26.4\_art_test.html",'w',encoding='utf-8').write(
   '<!DOCTYPE html><html><head><meta charset="utf-8"><title>t</title></head><body style="margin:0">'+frag+'</body></html>')
 for p in (p1,p2,p3): print(os.path.basename(p), round(os.path.getsize(p)/1e6,2),'MB')
