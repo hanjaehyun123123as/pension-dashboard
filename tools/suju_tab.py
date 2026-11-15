@@ -31,11 +31,11 @@ VIEW = r"""<div id="sujuView"><div class="card">
   <label><input type="checkbox" id="sjOrd" onchange="sjRender()"> 수주잔고 있는 종목만</label>
   <span>재고 증가율 ≥ <input id="sjInvMin" class="fin" type="number" step="1" oninput="sjRender()">%</span>
   <span>수주 증가율 ≥ <input id="sjOrdMin" class="fin" type="number" step="1" oninput="sjRender()">%</span>
-  <span>연금 증감 ≥ <input id="sjPenMin" class="fin" type="number" step="1" oninput="sjRender()">%</span>
+  <span>연금 <select id="sjPenKey" class="fin fsel" onchange="sjRender()"><option value="m">MoM</option><option value="y">YTD</option></select> ≥ <input id="sjPenMin" class="fin" type="number" step="0.1" oninput="sjRender()">%</span>
   <span style="flex:1"></span><span id="sjStat"></span>
 </div>
 <div style="max-height:75vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table id="sjT"></table></div>
-<div style="margin-top:8px;font-size:11.5px;color:var(--tx2)">열 제목 클릭 = 정렬(# = 원래 순서) · 매칭 사업장 클릭 = 인원검색 탭에서 그 회사 사업장 보기 · 연금 증감 = 첫 달 대비 최근 달 · 증가율은 직전 분기 대비(QoQ)</div>
+<div style="margin-top:8px;font-size:11.5px;color:var(--tx2)">열 제목 클릭 = 정렬(# = 원래 순서) · 매칭 사업장 클릭 = 인원검색 탭에서 그 회사 사업장 보기 · 연금 MoM = 전월 대비 · 연금 YTD = 첫 달(전년 12월) 대비 최근 달 · 재고·수주 증가율은 직전 분기 대비(QoQ)</div>
 </div></div>
 """
 
@@ -61,19 +61,19 @@ function sjGo(i){
 function sjRender(){
   const R=SUJU.rows,P=SUJU.months.length,q=normalize(document.getElementById('sjQ').value||''),only=document.getElementById('sjOrd').checked;
   const nv=id=>{const s=document.getElementById(id).value;return s===''?null:+s/100;};
-  const iv=nv('sjInvMin'),ov=nv('sjOrdMin'),pm=nv('sjPenMin');
-  let rows=R.map((r,i)=>{const a=r[7],b=r[6+P];return {r,i,pg:(a&&b!=null)?(b-a)/a:null};});
+  const iv=nv('sjInvMin'),ov=nv('sjOrdMin'),pm=nv('sjPenMin'),pk=document.getElementById('sjPenKey').value;
+  let rows=R.map((r,i)=>{const a=r[7],p=r[5+P],b=r[6+P];return {r,i,pg:(a&&b!=null)?(b-a)/a:null,mg:(p&&b!=null)?(b-p)/p:null};});
   rows=rows.filter(o=>{const r=o.r;
     if(q&&!normalize(r[0]).includes(q))return false;
     if(only&&r[5]==null)return false;
     if(iv!=null&&!(r[4]!=null&&r[4]>=iv))return false;
     if(ov!=null&&!(r[6]!=null&&r[6]>=ov))return false;
-    if(pm!=null&&!(o.pg!=null&&o.pg>=pm))return false;
+    if(pm!=null){const g=pk==='m'?o.mg:o.pg;if(!(g!=null&&g>=pm))return false;}
     return true;});
   const k=sjSort.k;
-  if(k>=0){const get=o=>k===99?o.pg:o.r[k];rows.sort((a,b)=>{const x=get(a),y=get(b);if(x==null&&y==null)return a.i-b.i;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?sjSort.d*x.localeCompare(y,'ko'):sjSort.d*(x-y);});}
+  if(k>=0){const get=o=>k===99?o.pg:k===98?o.mg:o.r[k];rows.sort((a,b)=>{const x=get(a),y=get(b);if(x==null&&y==null)return a.i-b.i;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?sjSort.d*x.localeCompare(y,'ko'):sjSort.d*(x-y);});}
   const H=[['#',-1],['종목',0],['현재가',1],['변동율',2],['시가총액',3],['재고자산 증가율',4],['수주잔고',5],['수주잔고 증가율',6]]
-    .concat(SUJU.months.map((m,j)=>['연금 '+m,7+j])).concat([['연금 증감',99],['매칭 사업장',7+P]]);
+    .concat(SUJU.months.map((m,j)=>['연금 '+m,7+j])).concat([['연금 MoM',98],['연금 YTD',99],['매칭 사업장',7+P]]);
   let h='<tr>'+H.map(([t,c])=>'<th onclick="sjSortBy('+c+')"'+(c===0||c===7+P?' style="text-align:left"':'')+'>'+t+(sjSort.k===c&&c>=0?(sjSort.d>0?' ▲':' ▼'):'')+'</th>').join('')+'</tr>';
   rows.forEach((o,n)=>{const r=o.r;
     h+='<tr><td style="color:var(--tx2)">'+(n+1)+'</td><td class="nm">'+esc(r[0])+'</td><td>'+sjNum(r[1])+'</td>'
@@ -81,7 +81,7 @@ function sjRender(){
       +'<td class="'+sjCls(r[4])+'">'+sjPct(r[4])+'</td><td>'+sjMoney(r[5])+'</td>'
       +'<td class="'+sjCls(r[6])+'">'+sjPct(r[6])+'</td>';
     for(let j=7;j<7+P;j++)h+='<td class="pn">'+sjNum(r[j])+'</td>';
-    h+='<td class="'+sjCls(o.pg)+'">'+sjPct(o.pg)+'</td>';
+    h+='<td class="'+sjCls(o.mg)+'">'+sjPct(o.mg)+'</td><td class="'+sjCls(o.pg)+'">'+sjPct(o.pg)+'</td>';
     h+='<td class="st'+(r[8+P]?' lk" onclick="sjGo('+o.i+')" title="인원검색에서 보기"':'"')+'>'+esc(r[7+P]||'')+'</td></tr>';});
   document.getElementById('sjT').innerHTML=h;
   document.getElementById('sjStat').textContent=rows.length.toLocaleString('ko-KR')+' / '+R.length.toLocaleString('ko-KR')+'종목';
