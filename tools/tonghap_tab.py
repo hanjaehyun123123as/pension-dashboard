@@ -42,7 +42,7 @@ PILL_AFTER = '<span class="vtab" data-v="s" onclick="sjView(\'s\')">수주+재�
 
 OPTS = ('<option value="iq">재고 증가율 QoQ</option><option value="iy">재고 증가율 YoY</option>'
         '<option value="bq">수주 증가율 QoQ</option><option value="by">수주 증가율 YoY</option>'
-        '<option value="pm">연금 MoM</option><option value="py">연금 YTD</option><option value="pv">연금 인원(명)</option>')
+        '<option value="pm">연금 MoM</option><option value="py">연금 YTD</option>')
 
 
 def cond(n, sel):
@@ -60,6 +60,7 @@ VIEW = r"""<div id="tgView"><div class="card">
 <div class="sjbar">
   <input id="tgQ" placeholder="종목 검색" oninput="tgRender()" style="background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--tx);padding:5px 10px;font-size:13px;outline:none;width:150px">
   <span>시총 ≥ <input id="tgCap" class="fin" type="number" step="100" oninput="tgRender()">억</span>
+  <span>직원수 ≥ <input id="tgEmp" class="fin" type="number" step="10" oninput="tgRender()">명</span>
   """ + cond(1, 'iq') + "\n  " + cond(2, 'py') + r"""
   <span class="tgc">조건3 연금 순위 <select id="tgR" class="fin fsel" onchange="tgRender()"><option value="">전체</option></select><select id="tgRO" class="fin fsel" onchange="tgRender()"><option value="le">위 이내</option><option value="eq">위만</option></select></span>
   <label><input type="checkbox" id="tgBl" onchange="tgRender()"> 수주잔고 있는 종목만</label>
@@ -70,7 +71,7 @@ VIEW = r"""<div id="tgView"><div class="card">
 <div id="tgMore" style="margin-top:6px"></div>
 <div style="margin-top:8px;font-size:11.5px;color:var(--tx2);line-height:1.6">열 제목 클릭 = 정렬 · ▸ = 그 종목 전 기간 차트·숫자 + 인원검색 연결 · ☆ = 관심종목(수주+재고 탭과 같은 목록)<br>
 재고자산·수주잔고(억원): DART 사업·반기·분기보고서에서 직접 뽑은 값(연결 우선) · 추이선은 21~24년 연말 → 25.1Q부터 분기 · 숫자 4칸 = 최근 4개 분기 · QoQ = 그 회사 최근 분기의 직전 분기 대비 · YoY = 전년 같은 분기 대비 · 외화로만 적힌 수주잔고는 비어 있음(▸에 원문 금액)<br>
-국민연금(명): 매칭 사업장 합계 · 추이선은 22.12·23.12·24.12 연말 → 25.12부터 월별 · 숫자 4칸 = 분기말 달 · MoM = 전월 대비 · YTD = 전년 12월 대비 · 순위 = 분기말 시점(22.12·23.12·24.12·25.12·26.3·26.6·26.9) 중 최근 달 인원이 몇 번째로 많은지(1 = 가장 많음) · 시가총액은 수주+재고 탭(26.3) 기준</div>
+국민연금(명): 매칭 사업장 합계(직원수 조건 = 최근 달 인원) ·추이선은 22.12·23.12·24.12 연말 → 25.12부터 월별 · 숫자 4칸 = 분기말 달 · MoM = 전월 대비 · YTD = 전년 12월 대비 · 순위 = 분기말 시점(22.12·23.12·24.12·25.12·26.3·26.6·26.9) 중 최근 달 인원이 몇 번째로 많은지(1 = 가장 많음) · 시가총액은 수주+재고 탭(26.3) 기준</div>
 </div></div>
 """
 
@@ -142,7 +143,7 @@ function tgRender(){
   if(!TGX.length)tgPrep();
   const q=normalize(document.getElementById('tgQ').value||''),cap=document.getElementById('tgCap').value,ws=new Set(sjW);
   const wOnly=document.getElementById('tgW').checked,blOnly=document.getElementById('tgBl').checked;
-  const rk=document.getElementById('tgR').value,rko=document.getElementById('tgRO').value;
+  const rk=document.getElementById('tgR').value,rko=document.getElementById('tgRO').value,emp=document.getElementById('tgEmp').value;
   const cs=[1,2].map(n=>{const k=document.getElementById('tgK'+n).value;document.getElementById('tgU'+n).textContent=k==='pv'?'명':k==='pr'?'위':'%';
     return {k,v:document.getElementById('tgV'+n).value,o:document.getElementById('tgO'+n).value};}).filter(c=>c.v!=='');
   let R=TGX.filter(o=>{
@@ -150,6 +151,7 @@ function tgRender(){
     if(cap!==''&&!(o.cap!=null&&o.cap>=+cap))return false;
     if(blOnly&&o.bv==null)return false;
     if(wOnly&&!ws.has(o.r[0]))return false;
+    if(emp!==''&&!(o.pv!=null&&o.pv>=+emp))return false;
     if(rk!==''&&(o.pr==null||(rko==='le'?o.pr>+rk:o.pr!==+rk)))return false;
     for(const c of cs){let x=o[c.k];if(x==null)return false;if(c.k!=='pv'&&c.k!=='pr')x*=100;if(c.o==='ge'?x<+c.v:x>+c.v)return false;}
     return true;});
