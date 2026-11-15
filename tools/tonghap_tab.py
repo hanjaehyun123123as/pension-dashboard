@@ -179,6 +179,14 @@ function tgPLraw(k){return k.endsWith('4Q')?k.slice(0,2)+'년':k;}
 """
 
 
+def replace_data(html, data):
+    """이미 통합 탭이 들어간 HTML(아티팩트를 read로 받은 파일 등)에서 TG 데이터만 새 tonghap.json 내용으로 바꾼다.
+    분기 갱신 때: make_tonghap.py → 아티팩트 read → replace_data → 같은 url로 publish"""
+    i = html.index('const TG=') + len('const TG=')
+    j = html.index(';\nlet tgSort=', i)
+    return html[:i] + data + html[j:]
+
+
 def inject(html, fragment=False):
     """수주+재고 탭이 들어간 템플릿(fragment=False) 또는 아티팩트 조각(fragment=True)에 통합 탭을 끼운다. 이미 있으면 그대로."""
     if 'id="tgView"' in html:
