@@ -60,6 +60,14 @@ html.sj-on #main,html.sj-on #loading,html.sj-on #gate{display:none!important}
 #sjT td.lk:hover{color:var(--acc);text-decoration:underline}
 #sjT td.up{color:var(--grn)}#sjT td.dn{color:var(--red)}#sjT td.pn{color:var(--acc)}
 #sjT tr:hover td{background:var(--panel2)}
+.sjhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.sjsub{font-size:12px;font-weight:600;padding:3px 11px;border:1px solid var(--line);border-radius:12px;color:var(--tx2);cursor:pointer;background:var(--panel2)}
+.sjsub:hover{color:var(--tx);border-color:var(--acc)}
+.sjsub.on{background:var(--acc2);border-color:var(--acc2);color:#08131f}
+.sjst{cursor:pointer;color:var(--tx2);margin-right:5px;font-weight:400}
+.sjst:hover{color:var(--acc2)}.sjst.on{color:var(--acc2)}
+#sjWText{width:100%;height:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:6px 10px;font-size:12px;resize:vertical;outline:none;font-family:inherit}
+#sjWText:focus{border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -128,8 +136,22 @@ html.sj-on #main,html.sj-on #loading,html.sj-on #gate{display:none!important}
 </div>
 </div>
 <div id="sujuView"><div class="card">
+<div class="sjhead">
+  <h2 style="margin:0 8px 0 0">수주잔고 · 재고자산 + 국민연금 <span id="sjBase" style="font-weight:400"></span></h2>
+  <span class="sjsub on" data-s="all" onclick="sjSub('all')">전체</span>
+  <span class="sjsub" data-s="w" onclick="sjSub('w')">⭐ 관심종목 <span id="sjWN">0</span></span>
+</div>
+<div id="sjWBar" style="display:none;margin-bottom:10px">
+  <div class="sjbar" style="margin-bottom:6px">
+    <span>종목명을 붙여넣고 ＋추가 (쉼표·줄바꿈으로 여러 개) · 표의 ☆를 눌러도 추가/삭제</span>
+    <span class="chip" onclick="sjWAddNames()">＋ 추가</span>
+    <span class="chip" onclick="sjWCopy()">📋 종목명 복사</span>
+    <span class="chip" onclick="sjWClear()">비우기</span>
+    <span id="sjWMsg" style="color:var(--acc2)"></span>
+  </div>
+  <textarea id="sjWText" spellcheck="false" placeholder="예: 삼성전자, SK하이닉스, 한화에어로스페이스"></textarea>
+</div>
 <div class="sjbar">
-  <h2 style="margin:0">수주잔고 · 재고자산 + 국민연금 <span id="sjBase" style="font-weight:400"></span></h2>
   <input id="sjQ" placeholder="종목 검색" oninput="sjRender()">
   <label><input type="checkbox" id="sjOrd" onchange="sjRender()"> 수주잔고 있는 종목만</label>
   <span>재고 증가율 ≥ <input id="sjInvMin" class="fin" type="number" step="1" oninput="sjRender()">%</span>
@@ -607,7 +629,37 @@ function renderWatch(){
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
 const SUJU=__SUJU__;
-let sjSort={k:-1,d:1};
+let sjSort={k:-1,d:1},sjSubV='all',sjW=[];
+try{sjW=JSON.parse(localStorage.getItem('pd_sj_watch')||'[]');if(!Array.isArray(sjW))sjW=[];}catch(e){sjW=[];}
+function sjWSave(){try{localStorage.setItem('pd_sj_watch',JSON.stringify(sjW));}catch(e){}document.getElementById('sjWN').textContent=sjW.length;}
+function sjWMsg(t){const m=document.getElementById('sjWMsg');m.textContent=t;clearTimeout(sjWMsg.t);sjWMsg.t=setTimeout(()=>m.textContent='',6000);}
+function sjSub(s){
+  sjSubV=s;
+  document.querySelectorAll('.sjsub').forEach(t=>t.classList.toggle('on',t.dataset.s===s));
+  document.getElementById('sjWBar').style.display=s==='w'?'block':'none';
+  sjRender();
+}
+function sjStar(i){const n=SUJU.rows[i][0],k=sjW.indexOf(n);if(k>=0)sjW.splice(k,1);else sjW.push(n);sjWSave();sjRender();}
+function sjWAddNames(){
+  const ta=document.getElementById('sjWText');
+  const names=ta.value.split(/[,\n\t;]+/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length){sjWMsg('추가할 종목명을 입력하세요');return;}
+  const idx=new Map(SUJU.rows.map(r=>[normalize(r[0]),r[0]]));
+  let add=0;const miss=[];
+  names.forEach(x=>{const n=idx.get(normalize(x));if(!n){miss.push(x);return;}if(!sjW.includes(n)){sjW.push(n);add++;}});
+  sjWSave();
+  if(!miss.length)ta.value='';else ta.value=miss.join(', ');
+  sjWMsg(add+'개 추가'+(miss.length?' · 목록에 없는 이름 '+miss.length+'개는 칸에 남겨뒀습니다':''));
+  sjRender();
+}
+function sjWCopy(){
+  if(!sjW.length){sjWMsg('관심종목이 비어 있습니다');return;}
+  const ta=document.getElementById('sjWText');ta.value=sjW.join(String.fromCharCode(10));ta.select();
+  let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+  if(!ok&&navigator.clipboard)navigator.clipboard.writeText(ta.value).then(()=>sjWMsg(sjW.length+'개 복사됨'),()=>sjWMsg('칸에 띄워뒀습니다. Ctrl+C로 복사하세요'));
+  else sjWMsg(ok?sjW.length+'개 복사됨 (칸에도 띄워뒀습니다)':'칸에 띄워뒀습니다. Ctrl+C로 복사하세요');
+}
+function sjWClear(){if(!sjW.length)return;if(!confirm('관심종목 '+sjW.length+'개를 모두 지울까요?'))return;sjW=[];sjWSave();sjRender();}
 function sjView(v){
   document.documentElement.classList.toggle('sj-on',v==='s');
   document.querySelectorAll('.vtab').forEach(t=>t.classList.toggle('on',t.dataset.v===v));
@@ -630,7 +682,9 @@ function sjRender(){
   const iv=nv('sjInvMin'),ov=nv('sjOrdMin');
   const pf=[['sjPenKey','sjPenMin'],['sjPenKey2','sjPenMin2']].map(([a,b])=>({k:document.getElementById(a).value,v:nv(b)})).filter(f=>f.v!=null);
   let rows=R.map((r,i)=>{const a=r[7],p=r[5+P],b=r[6+P];return {r,i,pg:(a&&b!=null)?(b-a)/a:null,mg:(p&&b!=null)?(b-p)/p:null};});
+  const ws=new Set(sjW),wOnly=sjSubV==='w';
   rows=rows.filter(o=>{const r=o.r;
+    if(wOnly&&!ws.has(r[0]))return false;
     if(q&&!normalize(r[0]).includes(q))return false;
     if(only&&r[5]==null)return false;
     if(iv!=null&&!(r[4]!=null&&r[4]>=iv))return false;
@@ -643,17 +697,22 @@ function sjRender(){
     .concat(SUJU.months.map((m,j)=>['연금 '+m,7+j])).concat([['연금 MoM',98],['연금 YTD',99],['매칭 사업장',7+P]]);
   let h='<tr>'+H.map(([t,c])=>'<th onclick="sjSortBy('+c+')"'+(c===0||c===7+P?' style="text-align:left"':'')+'>'+t+(sjSort.k===c&&c>=0?(sjSort.d>0?' ▲':' ▼'):'')+'</th>').join('')+'</tr>';
   rows.forEach((o,n)=>{const r=o.r;
-    h+='<tr><td style="color:var(--tx2)">'+(n+1)+'</td><td class="nm">'+esc(r[0])+'</td><td>'+sjNum(r[1])+'</td>'
+    const on=ws.has(r[0]);
+    h+='<tr><td style="color:var(--tx2)">'+(n+1)+'</td><td class="nm"><span class="sjst'+(on?' on':'')+'" onclick="sjStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+esc(r[0])+'</td><td>'+sjNum(r[1])+'</td>'
       +'<td class="'+sjCls(r[2])+'">'+sjPct(r[2])+'</td><td>'+sjMoney(r[3])+'</td>'
       +'<td class="'+sjCls(r[4])+'">'+sjPct(r[4])+'</td><td>'+sjMoney(r[5])+'</td>'
       +'<td class="'+sjCls(r[6])+'">'+sjPct(r[6])+'</td>';
     for(let j=7;j<7+P;j++)h+='<td class="pn">'+sjNum(r[j])+'</td>';
     h+='<td class="'+sjCls(o.mg)+'">'+sjPct(o.mg)+'</td><td class="'+sjCls(o.pg)+'">'+sjPct(o.pg)+'</td>';
     h+='<td class="st'+(r[8+P]?' lk" onclick="sjGo('+o.i+')" title="인원검색에서 보기"':'"')+'>'+esc(r[7+P]||'')+'</td></tr>';});
+  if(!rows.length)h+='<tr><td colspan="'+H.length+'" style="text-align:left;color:var(--tx2);padding:14px">'
+    +(wOnly&&!sjW.length?'관심종목이 비어 있습니다. 전체 탭에서 종목 이름 앞의 ☆를 누르거나, 위 칸에 종목명을 붙여넣고 ＋추가를 누르세요.':'조건에 맞는 종목이 없습니다')+'</td></tr>';
   document.getElementById('sjT').innerHTML=h;
-  document.getElementById('sjStat').textContent=rows.length.toLocaleString('ko-KR')+' / '+R.length.toLocaleString('ko-KR')+'종목';
+  const tot=wOnly?sjW.length:R.length;
+  document.getElementById('sjStat').textContent=rows.length.toLocaleString('ko-KR')+' / '+tot.toLocaleString('ko-KR')+(wOnly?'종목(관심)':'종목');
 }
 if(SUJU){
+  document.getElementById('sjWN').textContent=sjW.length;
   document.getElementById('vtabs').style.display='';
   document.getElementById('sjBase').textContent='· '+SUJU.base+' 분기 · '+SUJU.rows.length.toLocaleString('ko-KR')+'종목 · 국민연금 '+SUJU.months[0]+' ~ '+SUJU.months[SUJU.months.length-1];
 }
