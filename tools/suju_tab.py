@@ -32,6 +32,7 @@ VIEW = r"""<div id="sujuView"><div class="card">
   <span>재고 증가율 ≥ <input id="sjInvMin" class="fin" type="number" step="1" oninput="sjRender()">%</span>
   <span>수주 증가율 ≥ <input id="sjOrdMin" class="fin" type="number" step="1" oninput="sjRender()">%</span>
   <span>연금 <select id="sjPenKey" class="fin fsel" onchange="sjRender()"><option value="m">MoM</option><option value="y">YTD</option></select> ≥ <input id="sjPenMin" class="fin" type="number" step="0.1" oninput="sjRender()">%</span>
+  <span>그리고 연금 <select id="sjPenKey2" class="fin fsel" onchange="sjRender()"><option value="m">MoM</option><option value="y" selected>YTD</option></select> ≥ <input id="sjPenMin2" class="fin" type="number" step="0.1" oninput="sjRender()">%</span>
   <span style="flex:1"></span><span id="sjStat"></span>
 </div>
 <div style="max-height:75vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table id="sjT"></table></div>
@@ -61,14 +62,15 @@ function sjGo(i){
 function sjRender(){
   const R=SUJU.rows,P=SUJU.months.length,q=normalize(document.getElementById('sjQ').value||''),only=document.getElementById('sjOrd').checked;
   const nv=id=>{const s=document.getElementById(id).value;return s===''?null:+s/100;};
-  const iv=nv('sjInvMin'),ov=nv('sjOrdMin'),pm=nv('sjPenMin'),pk=document.getElementById('sjPenKey').value;
+  const iv=nv('sjInvMin'),ov=nv('sjOrdMin');
+  const pf=[['sjPenKey','sjPenMin'],['sjPenKey2','sjPenMin2']].map(([a,b])=>({k:document.getElementById(a).value,v:nv(b)})).filter(f=>f.v!=null);
   let rows=R.map((r,i)=>{const a=r[7],p=r[5+P],b=r[6+P];return {r,i,pg:(a&&b!=null)?(b-a)/a:null,mg:(p&&b!=null)?(b-p)/p:null};});
   rows=rows.filter(o=>{const r=o.r;
     if(q&&!normalize(r[0]).includes(q))return false;
     if(only&&r[5]==null)return false;
     if(iv!=null&&!(r[4]!=null&&r[4]>=iv))return false;
     if(ov!=null&&!(r[6]!=null&&r[6]>=ov))return false;
-    if(pm!=null){const g=pk==='m'?o.mg:o.pg;if(!(g!=null&&g>=pm))return false;}
+    for(const f of pf){const g=f.k==='m'?o.mg:o.pg;if(!(g!=null&&g>=f.v))return false;}
     return true;});
   const k=sjSort.k;
   if(k>=0){const get=o=>k===99?o.pg:k===98?o.mg:o.r[k];rows.sort((a,b)=>{const x=get(a),y=get(b);if(x==null&&y==null)return a.i-b.i;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?sjSort.d*x.localeCompare(y,'ko'):sjSort.d*(x-y);});}
