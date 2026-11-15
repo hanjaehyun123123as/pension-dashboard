@@ -7,6 +7,9 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 TPL  = open('template.html', encoding='utf-8').read()
 GROUPS = open('groups.json', encoding='utf-8').read()
 GZ   = open('data.gz','rb').read()
+# 수주+재고 탭 데이터 (suju.json 없으면 탭이 숨겨짐). 공개 사이트에는 넣지 않는다.
+SJP  = r"C:\Users\123\Documents\pension-dashboard\tools\suju.json"
+SUJU = open(SJP, encoding='utf-8').read() if os.path.exists(SJP) else 'null'
 
 def enc(gz, pw=b'4618'):
     salt, iv = os.urandom(16), os.urandom(12)
@@ -16,10 +19,10 @@ def enc(gz, pw=b'4618'):
 # 1) 공개 사이트 (암호 4618)
 t = TPL.replace('__GROUPS__', GROUPS)
 p1 = r"C:\Users\123\Documents\pension-dashboard\index.html"
-open(p1,'w',encoding='utf-8').write(t.replace('__ENC__','true').replace('__B64__', base64.b64encode(enc(GZ)).decode()))
+open(p1,'w',encoding='utf-8').write(t.replace('__SUJU__','null').replace('__ENC__','true').replace('__B64__', base64.b64encode(enc(GZ)).decode()))
 # 2) 작업 PC용 (평문)
 p2 = r"C:\Users\123\내 드라이브\claude\국민연금 클로드 26.4\국민연금_인원검색_대시보드.html"
-open(p2,'w',encoding='utf-8').write(t.replace('__ENC__','false').replace('__B64__', base64.b64encode(GZ).decode()))
+open(p2,'w',encoding='utf-8').write(t.replace('__SUJU__', SUJU).replace('__ENC__','false').replace('__B64__', base64.b64encode(GZ).decode()))
 
 # 3) 아티팩트 (다중 기본그룹 + 조각 HTML)
 a = TPL
@@ -43,7 +46,7 @@ frag = frag.replace("<style>", "<style>\n.pdwrap h1,.pdwrap h2{color:var(--tx)}"
 i = frag.index("</style>")+len("</style>")
 frag = frag[:i] + '\n<div class="pdwrap">\n' + frag[i:]
 frag = frag.replace('<script id="D"', '</div>\n<script id="D"', 1)
-frag = frag.replace('__GROUPS__', GROUPS).replace('__ENC__','false')
+frag = frag.replace('__GROUPS__', GROUPS).replace('__ENC__','false').replace('__SUJU__', SUJU)
 frag = frag.replace('__B64__', base64.b64encode(open('data_art.gz','rb').read()).decode())
 p3 = os.path.abspath('pension_dashboard_artifact.html')
 open(p3,'w',encoding='utf-8').write(frag)
