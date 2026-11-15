@@ -149,21 +149,22 @@ function tgRender(){
   if(k!=='#'){const g=k==='n'?(o=>o.r[0]):(o=>o[k]);R.sort((a,b)=>{const x=g(a),y=g(b);if(x==null&&y==null)return a.i-b.i;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?tgSort.d*x.localeCompare(y,'ko'):tgSort.d*(x-y);});}
   const QL=TG.Q4.map(j=>j>=0?tgPL(TG.P[j]):''),ML=TG.PM4.map(j=>j>=0?TG.M[j]:'');
   const th=(t,c,cls,extra)=>'<th'+(cls?' class="'+cls+'"':'')+(c?' onclick="tgSortBy(\''+c+'\')"':'')+(extra||'')+'>'+t+(c&&tgSort.k===c&&c!=='#'?(tgSort.d>0?' ▲':' ▼'):'')+'</th>';
-  const grp=(p,labs,g1,g2)=>th('추이','','g0')+labs.map((l,j)=>th(l,p+j)).join('')+th(g1[0],g1[1])+th(g2[0],g2[1]);
+  const grp=(p,labs,g1,g2)=>labs.map((l,j)=>th(l,p+j,j?'':'g0')).join('')+th(g1[0],g1[1])+th(g2[0],g2[1]);
   let h='<tr class="h1">'+th('#','#','',' rowspan="2"')+th('종목','n','',' rowspan="2" style="text-align:left"')+th('시가총액','cap','',' rowspan="2"')
-    +'<th class="g0" colspan="7">재고자산 (억원)</th><th class="g0" colspan="7">수주잔고 (억원)</th><th class="g0" colspan="7">국민연금 (명)</th><th rowspan="2"></th></tr>'
-    +'<tr class="h2">'+grp('i',QL,['QoQ','iq'],['YoY','iy'])+grp('b',QL,['QoQ','bq'],['YoY','by'])+grp('p',ML,['MoM','pm'],['YTD','py'])+'</tr>';
+    +'<th class="g0" colspan="3">추이</th><th class="g0" colspan="6">재고자산 (억원)</th><th class="g0" colspan="6">수주잔고 (억원)</th><th class="g0" colspan="6">국민연금 (명)</th><th rowspan="2"></th></tr>'
+    +'<tr class="h2">'+th('재고','','g0')+th('수주','')+th('연금','')+grp('i',QL,['QoQ','iq'],['YoY','iy'])+grp('b',QL,['QoQ','bq'],['YoY','by'])+grp('p',ML,['MoM','pm'],['YTD','py'])+'</tr>';
   const NC=25,lim=tgAll?R.length:Math.min(R.length,400);
   const pc=x=>'<td class="'+sjCls(x)+'">'+sjPct(x)+'</td>';
-  const vals=(o,p,f)=>[0,1,2,3].map(j=>'<td'+(j===3?' class="lv"':'')+'>'+f(o[p+j])+'</td>').join('');
+  const vals=(o,p,f)=>[0,1,2,3].map(j=>'<td'+(j===3?' class="lv"':j===0?' class="g0"':'')+'>'+f(o[p+j])+'</td>').join('');
   const pn=x=>x==null?'':x.toLocaleString('ko-KR');
   for(let n=0;n<lim;n++){const o=R[n],r=o.r,on=ws.has(r[0]),op=tgOpen.has(o.i);
     h+='<tr class="r'+(op?' op':'')+'"><td style="color:var(--tx2)">'+(n+1)+'</td>'
       +'<td class="nm"><span class="sjst'+(on?' on':'')+'" onclick="tgStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+esc(r[0])+'<span class="mk">'+(r[1]==='P'?'코스피':r[1]==='Q'?'코스닥':'')+'</span></td>'
       +'<td>'+tgMoney(o.cap)+'</td>'
-      +'<td class="sp g0">'+tgSpk(r[3])+'</td>'+vals(o,'i',tgMoney)+pc(o.iq)+pc(o.iy)
-      +'<td class="sp g0">'+(r[4]?tgSpk(r[4]):(r[8]?'<span style="color:var(--tx2)" title="'+esc(r[8])+'">외화</span>':''))+'</td>'+vals(o,'b',tgMoney)+pc(o.bq)+pc(o.by)
-      +'<td class="sp g0">'+tgSpk(r[5])+'</td>'+vals(o,'p',pn)+pc(o.pm)+pc(o.py)
+      +'<td class="sp g0">'+tgSpk(r[3])+'</td>'
+      +'<td class="sp">'+(r[4]?tgSpk(r[4]):(r[8]?'<span style="color:var(--tx2)" title="'+esc(r[8])+'">외화</span>':''))+'</td>'
+      +'<td class="sp">'+tgSpk(r[5])+'</td>'
+      +vals(o,'i',tgMoney)+pc(o.iq)+pc(o.iy)+vals(o,'b',tgMoney)+pc(o.bq)+pc(o.by)+vals(o,'p',pn)+pc(o.pm)+pc(o.py)
       +'<td><span class="tgx" onclick="tgTog('+o.i+')" title="전 기간 차트·숫자">'+(op?'▾':'▸')+'</span></td></tr>';
     if(op)h+='<tr class="det"><td colspan="'+NC+'">'+tgDet(o)+'</td></tr>';}
   if(!R.length)h+='<tr><td colspan="'+NC+'" style="text-align:left;color:var(--tx2);padding:14px">'+(wOnly&&!sjW.length?'관심종목이 비어 있습니다. 종목 이름 앞의 ☆를 누르거나 수주+재고 탭의 ⭐ 관심종목에서 붙여넣어 추가하세요.':'조건에 맞는 종목이 없습니다')+'</td></tr>';
