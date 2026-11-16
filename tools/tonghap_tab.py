@@ -15,6 +15,7 @@ html.tg-on #main,html.tg-on #loading,html.tg-on #gate,html.tg-on #sujuView{displ
 #tgT td{white-space:nowrap;padding:5px 7px}
 #tgT td.nm{text-align:left;color:var(--tx);font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis}
 #tgT td.ath{color:var(--grn);font-weight:700}
+#tgT .pend{color:var(--acc2);font-weight:700;margin-left:2px;cursor:help}
 #tgT .mk{font-size:10px;color:var(--tx2);font-weight:400;margin-left:4px}
 #tgT td.g0,#tgT th.g0{border-left:2px solid var(--line)}
 #tgT td.sp{padding-right:2px}
@@ -69,7 +70,7 @@ VIEW = r"""<div id="tgView"><div class="card">
 </div>
 <div style="max-height:75vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table id="tgT"></table></div>
 <div id="tgMore" style="margin-top:6px"></div>
-<div style="margin-top:8px;font-size:11.5px;color:var(--tx2);line-height:1.6">열 제목 클릭 = 정렬 · ▸ = 그 종목 전 기간 차트·숫자 + 인원검색 연결 · ☆ = 관심종목(수주+재고 탭과 같은 목록)<br>
+<div style="margin-top:8px;font-size:11.5px;color:var(--tx2);line-height:1.6">열 제목 클릭 = 정렬 · ▸ = 그 종목 전 기간 차트·숫자 + 인원검색 연결 · ☆ = 관심종목(수주+재고 탭과 같은 목록) · 종목명 옆 <b style="color:var(--acc2)">*</b> = 최근 분기 보고서를 DART에서 아직 못 받은 종목(그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준)<br>
 재고자산·수주잔고(억원): DART 사업·반기·분기보고서에서 직접 뽑은 값(연결 우선) · 추이선은 21~24년 연말 → 25.1Q부터 분기 · 숫자 4칸 = 최근 4개 분기 · QoQ = 그 회사 최근 분기의 직전 분기 대비 · YoY = 전년 같은 분기 대비 · 외화로만 적힌 수주잔고는 비어 있음(▸에 원문 금액)<br>
 국민연금(명): 매칭 사업장 합계(직원수 조건 = 최근 달 인원) ·추이선은 22.12·23.12·24.12 연말 → 25.12부터 월별 · 숫자 4칸 = 분기말 달 · MoM = 전월 대비 · YTD = 전년 12월 대비 · 순위 = 분기말 시점(22.12·23.12·24.12·25.12·26.3·26.6·26.9) 중 최근 달 인원이 몇 번째로 많은지(1 = 가장 많음) · 시가총액은 수주+재고 탭(26.3) 기준</div>
 </div></div>
@@ -81,6 +82,7 @@ let tgSort={k:'cap',d:-1},tgOpen=new Set(),tgAll=false,TGX=[];
 function tgMoney(e){if(e==null)return '';const a=Math.abs(e);if(a>=10000)return (e/10000).toLocaleString('ko-KR',{maximumFractionDigits:2})+'조';if(a>=10)return Math.round(e).toLocaleString('ko-KR')+'억';return e.toLocaleString('ko-KR',{maximumFractionDigits:1})+'억';}
 function tgPL(k){return TG.P0.has(k)?k.slice(0,2)+'년':k;}
 function tgPrep(){
+  const PEND=new Set(TG.pend||[]);
   const P=TG.P,ix={};P.forEach((k,i)=>ix[k]=i);
   const fq=P.find(k=>!k.endsWith('4Q'));TG.P0=new Set(P.filter(k=>fq&&k<fq&&k.endsWith('4Q')));
   const LP=P.length-1;TG.Q4=[LP-3,LP-2,LP-1,LP];
@@ -97,7 +99,7 @@ function tgPrep(){
       bv:bi>=0?B[bi]:null,bq:gr(B,bi,bi>=0?prevQ(P[bi]):''),by:gr(B,bi,bi>=0?yoyQ(P[bi]):''),
       pv,pm:(pv!=null&&pp)?(pv-pp)/pp:null,py:(pv!=null&&p0)?(pv-p0)/p0:null};
     for(let j=0;j<4;j++){const q=TG.Q4[j],m=TG.PM4[j];o['i'+j]=(I&&q>=0)?I[q]:null;o['b'+j]=(B&&q>=0)?B[q]:null;o['p'+j]=(Pn&&m>=0)?Pn[m]:null;}
-    o.pr=null;
+    o.pr=null;o.pq=PEND.has(r[0]);
     if(Pn&&pv!=null){let gt=0,c=0;TG.RQ.forEach(j=>{const x=Pn[j];if(x==null)return;c++;if(x>pv)gt++;});o.pr=gt+1;o.prn=c;}
     return o;});
 }
@@ -170,7 +172,7 @@ function tgRender(){
   const pn=x=>x==null?'':x.toLocaleString('ko-KR');
   for(let n=0;n<lim;n++){const o=R[n],r=o.r,on=ws.has(r[0]),op=tgOpen.has(o.i);
     h+='<tr class="r'+(op?' op':'')+'"><td style="color:var(--tx2)">'+(n+1)+'</td>'
-      +'<td class="nm" title="'+esc(r[0])+'"><span class="sjst'+(on?' on':'')+'" onclick="tgStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+esc(r[0])+'<span class="mk">'+(r[1]==='P'?'코스피':r[1]==='Q'?'코스닥':'')+'</span></td>'
+      +'<td class="nm" title="'+esc(r[0])+'"><span class="sjst'+(on?' on':'')+'" onclick="tgStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+esc(r[0])+(o.pq?'<span class="pend" title="'+TG.P[TG.P.length-1]+' 보고서를 DART에서 아직 못 받음 — 그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준">*</span>':'')+'<span class="mk">'+(r[1]==='P'?'코스피':r[1]==='Q'?'코스닥':'')+'</span></td>'
       +'<td>'+tgMoney(o.cap)+'</td>'
       +'<td class="sp g0">'+tgSpk(r[3])+'</td>'
       +'<td class="sp">'+(r[4]?tgSpk(r[4]):(r[8]?'<span style="color:var(--tx2)" title="'+esc(r[8])+'">외화</span>':''))+'</td>'
@@ -196,7 +198,7 @@ if(TG){
   document.getElementById('vtabs').style.display='';
   const nq=TG.M.filter((m,j)=>j===TG.M.length-1||+m.split('.')[1]%3===0).length,rs=document.getElementById('tgR');
   for(let k=1;k<=nq;k++)rs.add(new Option(k,k));
-  document.getElementById('tgBase').textContent='· 재고·수주 '+tgPLraw(TG.P[0])+' ~ '+TG.P[TG.P.length-1]+' (DART 보고서) · 국민연금 '+TG.M[0]+' ~ '+TG.M[TG.M.length-1]+' · '+TG.rows.length.toLocaleString('ko-KR')+'종목';
+  document.getElementById('tgBase').textContent='· 재고·수주 '+tgPLraw(TG.P[0])+' ~ '+TG.P[TG.P.length-1]+' (DART 보고서) · 국민연금 '+TG.M[0]+' ~ '+TG.M[TG.M.length-1]+' · '+TG.rows.length.toLocaleString('ko-KR')+'종목'+((TG.pend&&TG.pend.length)?' · * '+TG.pend.length+'종목은 '+TG.P[TG.P.length-1]+' 보고서 대기':'');
 }else{const p=document.querySelector('.vtab[data-v="t"]');if(p)p.remove();}
 function tgPLraw(k){return k.endsWith('4Q')?k.slice(0,2)+'년':k;}
 """
