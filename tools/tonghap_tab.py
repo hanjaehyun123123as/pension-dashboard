@@ -64,6 +64,7 @@ VIEW = r"""<div id="tgView"><div class="card">
   <span>직원수 ≥ <input id="tgEmp" class="fin" type="number" step="10" oninput="tgRender()">명</span>
   """ + cond(1, 'iq') + "\n  " + cond(2, 'py') + r"""
   <span class="tgc">조건3 연금 순위 <select id="tgR" class="fin fsel" onchange="tgRender()"><option value="">전체</option></select><select id="tgRO" class="fin fsel" onchange="tgRender()"><option value="le">위 이내</option><option value="eq">위만</option></select></span>
+  <span class="tgc" title="각 회사의 최근 분기 금액 기준">조건4 <select id="tgAK" class="fin fsel" onchange="tgRender()"><option value="iv">재고자산</option><option value="bv">수주잔고</option></select><input id="tgAV" class="fin" type="number" step="any" oninput="tgRender()" style="width:70px">억<select id="tgAO" class="fin fsel" onchange="tgRender()"><option value="ge">이상</option><option value="le">이하</option></select></span>
   <label><input type="checkbox" id="tgBl" onchange="tgRender()"> 수주잔고 있는 종목만</label>
   <label><input type="checkbox" id="tgW" onchange="tgRender()"> ⭐ 관심종목만 (<span id="tgWN">0</span>)</label>
   <span style="flex:1"></span><span id="tgStat"></span>
@@ -146,6 +147,7 @@ function tgRender(){
   const q=normalize(document.getElementById('tgQ').value||''),cap=document.getElementById('tgCap').value,ws=new Set(sjW);
   const wOnly=document.getElementById('tgW').checked,blOnly=document.getElementById('tgBl').checked;
   const rk=document.getElementById('tgR').value,rko=document.getElementById('tgRO').value,emp=document.getElementById('tgEmp').value;
+  const ak=document.getElementById('tgAK').value,av=document.getElementById('tgAV').value,ao=document.getElementById('tgAO').value;
   const cs=[1,2].map(n=>{const k=document.getElementById('tgK'+n).value;document.getElementById('tgU'+n).textContent=k==='pv'?'명':k==='pr'?'위':'%';
     return {k,v:document.getElementById('tgV'+n).value,o:document.getElementById('tgO'+n).value};}).filter(c=>c.v!=='');
   let R=TGX.filter(o=>{
@@ -154,6 +156,7 @@ function tgRender(){
     if(blOnly&&o.bv==null)return false;
     if(wOnly&&!ws.has(o.r[0]))return false;
     if(emp!==''&&!(o.pv!=null&&o.pv>=+emp))return false;
+    if(av!==''){const x=o[ak];if(x==null||(ao==='ge'?x<+av:x>+av))return false;}
     if(rk!==''&&(o.pr==null||(rko==='le'?o.pr>+rk:o.pr!==+rk)))return false;
     for(const c of cs){let x=o[c.k];if(x==null)return false;if(c.k!=='pv'&&c.k!=='pr')x*=100;if(c.o==='ge'?x<+c.v:x>+c.v)return false;}
     return true;});
