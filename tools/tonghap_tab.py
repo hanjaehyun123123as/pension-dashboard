@@ -1,5 +1,5 @@
 # 통합 탭: 제목 옆 '통합' 작은 탭 + 종목당 한 줄 스크리닝 표
-#   재고자산·수주잔고(DART 추이선 + 최근 4개 분기 값 + QoQ·YoY) + 국민연금(추이선 + 분기말 4개월 + MoM·YTD) + 시총
+#   매출액(분기)·재고자산·수주잔고(DART 추이선 + 최근 4개 분기 값 + QoQ·YoY) + 국민연금(추이선 + 분기말 4개월 + MoM·YTD) + 시총
 # 데이터 자리는 __TONGHAP__ (tools/tonghap.json 또는 null). 수주+재고 탭(suju_tab.py)이 먼저 들어가 있어야 한다.
 # tonghap.json 만드는 곳: 내 드라이브\DART_리서치 codex\수주잔고_재고자산_추출\make_tonghap.py
 CSS = r"""
@@ -7,13 +7,13 @@ CSS = r"""
 html.tg-on #tgView{display:block}
 html.tg-on #main,html.tg-on #loading,html.tg-on #gate,html.tg-on #sujuView{display:none!important}
 #tgT{border-collapse:collapse;width:100%}
-#tgT th{position:sticky;top:0;z-index:1;background:var(--panel2);user-select:none;white-space:nowrap;padding:5px 7px}
+#tgT th{position:sticky;top:0;z-index:1;background:var(--panel2);user-select:none;white-space:nowrap;padding:5px 3px}
 #tgT th[onclick]{cursor:pointer}
 #tgT tr.h1 th{height:26px;text-align:center;color:var(--tx);border-bottom:1px solid var(--line)}
 #tgT tr.h2 th{top:26px}
 #tgT th .pp{font-size:10px;font-weight:400;color:var(--tx2);line-height:1.2}
-#tgT td{white-space:nowrap;padding:5px 7px}
-#tgT td.nm{text-align:left;color:var(--tx);font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+#tgT td{white-space:nowrap;padding:5px 3px}
+#tgT td.nm{text-align:left;color:var(--tx);font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis}
 #tgT td.ath{color:var(--grn);font-weight:700}
 #tgT .pend{color:var(--acc2);font-weight:700;margin-left:2px;cursor:help}
 #tgT .mk{font-size:10px;color:var(--tx2);font-weight:400;margin-left:4px}
@@ -41,7 +41,8 @@ html.tg-on #main,html.tg-on #loading,html.tg-on #gate,html.tg-on #sujuView{displ
 PILL = '<span class="vtab" data-v="t" onclick="sjView(\'t\')">통합</span>'
 PILL_AFTER = '<span class="vtab" data-v="s" onclick="sjView(\'s\')">수주+재고</span>'
 
-OPTS = ('<option value="iq">재고 증가율 QoQ</option><option value="iy">재고 증가율 YoY</option>'
+OPTS = ('<option value="rq">매출 증가율 QoQ</option><option value="ry">매출 증가율 YoY</option>'
+        '<option value="iq">재고 증가율 QoQ</option><option value="iy">재고 증가율 YoY</option>'
         '<option value="bq">수주 증가율 QoQ</option><option value="by">수주 증가율 YoY</option>'
         '<option value="pm">연금 MoM</option><option value="py">연금 YTD</option>')
 
@@ -64,7 +65,7 @@ VIEW = r"""<div id="tgView"><div class="card">
   <span>직원수 ≥ <input id="tgEmp" class="fin" type="number" step="10" oninput="tgRender()">명</span>
   """ + cond(1, 'iq') + "\n  " + cond(2, 'py') + r"""
   <span class="tgc">조건3 연금 순위 <select id="tgR" class="fin fsel" onchange="tgRender()"><option value="">전체</option></select><select id="tgRO" class="fin fsel" onchange="tgRender()"><option value="le">위 이내</option><option value="eq">위만</option></select></span>
-  <span class="tgc" title="각 회사의 최근 분기 금액 기준">조건4 <select id="tgAK" class="fin fsel" onchange="tgRender()"><option value="iv">재고자산</option><option value="bv">수주잔고</option></select><input id="tgAV" class="fin" type="number" step="any" oninput="tgRender()" style="width:70px">억<select id="tgAO" class="fin fsel" onchange="tgRender()"><option value="ge">이상</option><option value="le">이하</option></select></span>
+  <span class="tgc" title="각 회사의 최근 분기 금액 기준">조건4 <select id="tgAK" class="fin fsel" onchange="tgRender()"><option value="iv">재고자산</option><option value="bv">수주잔고</option><option value="rv">매출액</option></select><input id="tgAV" class="fin" type="number" step="any" oninput="tgRender()" style="width:70px">억<select id="tgAO" class="fin fsel" onchange="tgRender()"><option value="ge">이상</option><option value="le">이하</option></select></span>
   <label><input type="checkbox" id="tgBl" onchange="tgRender()"> 수주잔고 있는 종목만</label>
   <label><input type="checkbox" id="tgW" onchange="tgRender()"> ⭐ 관심종목만 (<span id="tgWN">0</span>)</label>
   <span style="flex:1"></span><span id="tgStat"></span>
@@ -72,6 +73,7 @@ VIEW = r"""<div id="tgView"><div class="card">
 <div style="max-height:75vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table id="tgT"></table></div>
 <div id="tgMore" style="margin-top:6px"></div>
 <div style="margin-top:8px;font-size:11.5px;color:var(--tx2);line-height:1.6">열 제목 클릭 = 정렬 · ▸ = 그 종목 전 기간 차트·숫자 + 인원검색 연결 · ☆ = 관심종목(수주+재고 탭과 같은 목록) · 종목명 옆 <b style="color:var(--acc2)">*</b> = 최근 분기 보고서를 DART에서 아직 못 받은 종목(그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준)<br>
+매출액(억원): 분기 3개월 매출, DART 보고서의 XBRL 매출 태그(연결 우선, 연결 없으면 별도) · 태그가 25.3Q 보고서부터 붙어 있어 24.3Q부터(전년 같은 분기 값 이용) · 4분기 = 연간 − 3분기 누적 · 숫자 4칸·QoQ·YoY는 재고와 같은 방식<br>
 재고자산·수주잔고(억원): DART 사업·반기·분기보고서에서 직접 뽑은 값(연결 우선) · 추이선은 21~24년 연말 → 25.1Q부터 분기 · 숫자 4칸 = 최근 4개 분기 · QoQ = 그 회사 최근 분기의 직전 분기 대비 · YoY = 전년 같은 분기 대비 · 외화로만 적힌 수주잔고는 비어 있음(▸에 원문 금액)<br>
 국민연금(명): 매칭 사업장 합계(직원수 조건 = 최근 달 인원) ·추이선은 22.12·23.12·24.12 연말 → 25.12부터 월별 · 숫자 4칸 = 분기말 달 · MoM = 전월 대비 · YTD = 전년 12월 대비 · 순위 = 분기말 시점(22.12·23.12·24.12·25.12·26.3·26.6·26.9) 중 최근 달 인원이 몇 번째로 많은지(1 = 가장 많음) · 시가총액은 수주+재고 탭(26.3) 기준</div>
 </div></div>
@@ -80,7 +82,7 @@ VIEW = r"""<div id="tgView"><div class="card">
 JS = r"""
 const TG=__TONGHAP__;
 let tgSort={k:'cap',d:-1},tgOpen=new Set(),tgAll=false,TGX=[];
-function tgMoney(e){if(e==null)return '';const a=Math.abs(e);if(a>=10000)return (e/10000).toLocaleString('ko-KR',{maximumFractionDigits:2})+'조';if(a>=10)return Math.round(e).toLocaleString('ko-KR')+'억';return e.toLocaleString('ko-KR',{maximumFractionDigits:1})+'억';}
+function tgMoney(e){if(e==null)return '';const a=Math.abs(e);if(a>=10000)return (e/10000).toLocaleString('ko-KR',{maximumFractionDigits:a>=1000000?1:2})+'조';if(a>=10)return Math.round(e).toLocaleString('ko-KR')+'억';return e.toLocaleString('ko-KR',{maximumFractionDigits:1})+'억';}
 function tgPL(k){return TG.P0.has(k)?k.slice(0,2)+'년':k;}
 function tgPrep(){
   const PEND=new Set(TG.pend||[]);
@@ -94,12 +96,15 @@ function tgPrep(){
   TG.PM4=[3,2,1,0].map(s=>{let y=ly,m=lm-3*s;while(m<=0){m+=12;y--;}return M.indexOf(y+'.'+m);});
   const gr=(a,i,k)=>{if(!a||i<0)return null;const j=ix[k];if(j==null)return null;const x=a[i],y=a[j];return (x!=null&&y)?(x-y)/Math.abs(y):null;};
   const last=a=>{if(!a)return -1;for(let i=a.length-1;i>=0;i--)if(a[i]!=null)return i;return -1;};
-  TGX=TG.rows.map((r,i)=>{const I=r[3]||null,B=r[4]||null,Pn=r[5]||null,li=last(I),bi=last(B);
+  const RP=TG.RP||[],rix={};RP.forEach((k,i)=>rix[k]=i);
+  const grR=(a,i,k)=>{if(!a||i<0)return null;const j=rix[k];if(j==null)return null;const x=a[i],y=a[j];return (x!=null&&y)?(x-y)/Math.abs(y):null;};
+  TGX=TG.rows.map((r,i)=>{const I=r[3]||null,B=r[4]||null,Pn=r[5]||null,Rv=r[9]||null,li=last(I),bi=last(B),ri=last(Rv);
     const pv=Pn?Pn[ML]:null,pp=Pn?Pn[ML-1]:null,p0=(Pn&&yb>=0)?Pn[yb]:null;
     const o={i,r,nn:normalize(r[0]),cap:r[2],iv:li>=0?I[li]:null,iq:gr(I,li,li>=0?prevQ(P[li]):''),iy:gr(I,li,li>=0?yoyQ(P[li]):''),
       bv:bi>=0?B[bi]:null,bq:gr(B,bi,bi>=0?prevQ(P[bi]):''),by:gr(B,bi,bi>=0?yoyQ(P[bi]):''),
-      pv,pm:(pv!=null&&pp)?(pv-pp)/pp:null,py:(pv!=null&&p0)?(pv-p0)/p0:null};
-    for(let j=0;j<4;j++){const q=TG.Q4[j],m=TG.PM4[j];o['i'+j]=(I&&q>=0)?I[q]:null;o['b'+j]=(B&&q>=0)?B[q]:null;o['p'+j]=(Pn&&m>=0)?Pn[m]:null;}
+      pv,pm:(pv!=null&&pp)?(pv-pp)/pp:null,py:(pv!=null&&p0)?(pv-p0)/p0:null,
+      rv:ri>=0?Rv[ri]:null,rq:grR(Rv,ri,ri>=0?prevQ(RP[ri]):''),ry:grR(Rv,ri,ri>=0?yoyQ(RP[ri]):'')};
+    for(let j=0;j<4;j++){const q=TG.Q4[j],m=TG.PM4[j],rj=q>=0?rix[TG.P[q]]:null;o['r'+j]=(Rv&&rj!=null)?Rv[rj]:null;o['i'+j]=(I&&q>=0)?I[q]:null;o['b'+j]=(B&&q>=0)?B[q]:null;o['p'+j]=(Pn&&m>=0)?Pn[m]:null;}
     o.pr=null;o.pq=PEND.has(r[0]);
     if(Pn&&pv!=null){let gt=0,c=0;TG.RQ.forEach(j=>{const x=Pn[j];if(x==null)return;c++;if(x>pv)gt++;});o.pr=gt+1;o.prn=c;}
     return o;});
@@ -129,7 +134,9 @@ function tgDet(o){
   const n0=x=>x==null?'':Math.round(x).toLocaleString('ko-KR');
   const chg=a=>a?a.map((x,j)=>{if(!j)return null;const y=a[j-1];return (x!=null&&y)?(x-y)/Math.abs(y):null;}):[];
   const row=(t,a,f)=>'<tr><td>'+t+'</td>'+a.map(x=>'<td'+(f===sjPct?' class="'+sjCls(x)+'"':'')+'>'+(x==null?'':f(x))+'</td>').join('')+'</tr>';
-  let h='<div class="tgcharts"><div class="tgch"><b>재고자산</b>억원'+tgChart(I,P,tgMoney)+'</div><div class="tgch"><b>수주잔고</b>억원'+tgChart(B,P,tgMoney)+'</div><div class="tgch"><b>국민연금</b>명'+tgChart(Pn,M,x=>Math.round(x).toLocaleString('ko-KR')+'명',1)+'</div></div>';
+  const RP=TG.RP||[],Rv=r[9]||null;
+  let h='<div class="tgcharts"><div class="tgch"><b>매출액</b>억원 (분기)'+tgChart(Rv,RP,tgMoney)+'</div><div class="tgch"><b>재고자산</b>억원'+tgChart(I,P,tgMoney)+'</div><div class="tgch"><b>수주잔고</b>억원'+tgChart(B,P,tgMoney)+'</div><div class="tgch"><b>국민연금</b>명'+tgChart(Pn,M,x=>Math.round(x).toLocaleString('ko-KR')+'명',1)+'</div></div>';
+  if(Rv)h+='<table class="tgmini"><tr><th>억원</th>'+RP.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+row('매출액(분기)',Rv,tgMoney)+row('　전기 대비',chg(Rv),sjPct)+'</table>';
   h+='<table class="tgmini"><tr><th>억원</th>'+P.map(x=>'<th>'+x+'</th>').join('')+'</tr>';
   if(I)h+=row('재고자산',I,tgMoney)+row('　전기 대비',chg(I),sjPct);
   if(B)h+=row('수주잔고',B,tgMoney)+row('　전기 대비',chg(B),sjPct);
@@ -164,23 +171,24 @@ function tgRender(){
   if(k!=='#'){const g=k==='n'?(o=>o.r[0]):(o=>o[k]);R.sort((a,b)=>{const x=g(a),y=g(b);if(x==null&&y==null)return a.i-b.i;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?tgSort.d*x.localeCompare(y,'ko'):tgSort.d*(x-y);});}
   const QL=TG.Q4.map(j=>j>=0?tgPL(TG.P[j]):''),ML=TG.PM4.map(j=>j>=0?TG.M[j]:'');
   const th=(t,c,cls,extra)=>'<th'+(cls?' class="'+cls+'"':'')+(c?' onclick="tgSortBy(\''+c+'\')"':'')+(extra||'')+'>'+t+(c&&tgSort.k===c&&c!=='#'?(tgSort.d>0?' ▲':' ▼'):'')+'</th>';
-  const PR=tgPLraw(TG.P[0])+'~'+TG.P[TG.P.length-1],MR=TG.M[0]+'~'+TG.M[TG.M.length-1],CT=' style="text-align:center"';
+  const RR=(TG.RP&&TG.RP.length)?TG.RP[0]+'~'+TG.RP[TG.RP.length-1]:'',PR=tgPLraw(TG.P[0])+'~'+TG.P[TG.P.length-1],MR=TG.M[0]+'~'+TG.M[TG.M.length-1],CT=' style="text-align:center"';
   const grp=(p,labs,g1,g2)=>labs.map((l,j)=>th(l,p+j,j?'':'g0')).join('')+th(g1[0],g1[1])+th(g2[0],g2[1]);
   let h='<tr class="h1">'+th('#','#','',' rowspan="2"')+th('종목','n','',' rowspan="2" style="text-align:left;width:1%"')+th('시가총액','cap','',' rowspan="2" style="width:1%"')
-    +'<th class="g0" colspan="3">추이</th><th class="g0" colspan="6">재고자산 (억원)</th><th class="g0" colspan="6">수주잔고 (억원)</th><th class="g0" colspan="7">국민연금 (명)</th><th rowspan="2"></th></tr>'
-    +'<tr class="h2">'+th('재고<div class="pp">'+PR+'</div>','','g0',CT)+th('수주<div class="pp">'+PR+'</div>','','',CT)+th('연금<div class="pp">'+MR+'</div>','','',CT)+grp('i',QL,['QoQ','iq'],['YoY','iy'])+grp('b',QL,['QoQ','bq'],['YoY','by'])+grp('p',ML,['MoM','pm'],['YTD','py'])+th('순위<div class="pp">분기 '+TG.RQ.length+'개 중</div>','pr')+'</tr>';
-  const NC=26,lim=tgAll?R.length:Math.min(R.length,400);
-  const pc=x=>'<td class="'+sjCls(x)+'">'+sjPct(x)+'</td>';
+    +'<th class="g0" colspan="4">추이</th><th class="g0" colspan="6">매출액 (억원)</th><th class="g0" colspan="6">재고자산 (억원)</th><th class="g0" colspan="6">수주잔고 (억원)</th><th class="g0" colspan="7">국민연금 (명)</th><th rowspan="2"></th></tr>'
+    +'<tr class="h2">'+th('매출<div class="pp">'+RR+'</div>','','g0',CT)+th('재고<div class="pp">'+PR+'</div>','','',CT)+th('수주<div class="pp">'+PR+'</div>','','',CT)+th('연금<div class="pp">'+MR+'</div>','','',CT)+grp('r',QL,['QoQ','rq'],['YoY','ry'])+grp('i',QL,['QoQ','iq'],['YoY','iy'])+grp('b',QL,['QoQ','bq'],['YoY','by'])+grp('p',ML,['MoM','pm'],['YTD','py'])+th('순위<div class="pp">분기 '+TG.RQ.length+'개 중</div>','pr')+'</tr>';
+  const NC=33,lim=tgAll?R.length:Math.min(R.length,400);
+  const pc=x=>'<td class="'+sjCls(x)+'"'+(x!=null&&Math.abs(x)>=1?' title="'+sjPct(x)+'"':'')+'>'+(x!=null&&Math.abs(x)>=1?(x>0?'+':'')+Math.round(x*100)+'%':sjPct(x))+'</td>';
   const vals=(o,p,f)=>[0,1,2,3].map(j=>'<td'+(j===3?' class="lv"':j===0?' class="g0"':'')+'>'+f(o[p+j])+'</td>').join('');
   const pn=x=>x==null?'':x.toLocaleString('ko-KR');
   for(let n=0;n<lim;n++){const o=R[n],r=o.r,on=ws.has(r[0]),op=tgOpen.has(o.i);
     h+='<tr class="r'+(op?' op':'')+'"><td style="color:var(--tx2)">'+(n+1)+'</td>'
       +'<td class="nm" title="'+esc(r[0])+'"><span class="sjst'+(on?' on':'')+'" onclick="tgStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+esc(r[0])+(o.pq?'<span class="pend" title="'+TG.P[TG.P.length-1]+' 보고서를 DART에서 아직 못 받음 — 그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준">*</span>':'')+'<span class="mk">'+(r[1]==='P'?'코스피':r[1]==='Q'?'코스닥':'')+'</span></td>'
       +'<td>'+tgMoney(o.cap)+'</td>'
-      +'<td class="sp g0">'+tgSpk(r[3])+'</td>'
+      +'<td class="sp g0">'+tgSpk(r[9])+'</td>'
+      +'<td class="sp">'+tgSpk(r[3])+'</td>'
       +'<td class="sp">'+(r[4]?tgSpk(r[4]):(r[8]?'<span style="color:var(--tx2)" title="'+esc(r[8])+'">외화</span>':''))+'</td>'
       +'<td class="sp">'+tgSpk(r[5])+'</td>'
-      +vals(o,'i',tgMoney)+pc(o.iq)+pc(o.iy)+vals(o,'b',tgMoney)+pc(o.bq)+pc(o.by)+vals(o,'p',pn)+pc(o.pm)+pc(o.py)
+      +vals(o,'r',tgMoney)+pc(o.rq)+pc(o.ry)+vals(o,'i',tgMoney)+pc(o.iq)+pc(o.iy)+vals(o,'b',tgMoney)+pc(o.bq)+pc(o.by)+vals(o,'p',pn)+pc(o.pm)+pc(o.py)
       +(o.pr==null?'<td></td>':'<td class="'+(o.pr===1?'ath':'')+'" title="분기말 '+o.prn+'개 시점 중 '+o.pr+'위">'+o.pr+'</td>')
       +'<td><span class="tgx" onclick="tgTog('+o.i+')" title="전 기간 차트·숫자">'+(op?'▾':'▸')+'</span></td></tr>';
     if(op)h+='<tr class="det"><td colspan="'+NC+'">'+tgDet(o)+'</td></tr>';}
@@ -201,7 +209,7 @@ if(TG){
   document.getElementById('vtabs').style.display='';
   const nq=TG.M.filter((m,j)=>j===TG.M.length-1||+m.split('.')[1]%3===0).length,rs=document.getElementById('tgR');
   for(let k=1;k<=nq;k++)rs.add(new Option(k,k));
-  document.getElementById('tgBase').textContent='· 재고·수주 '+tgPLraw(TG.P[0])+' ~ '+TG.P[TG.P.length-1]+' (DART 보고서) · 국민연금 '+TG.M[0]+' ~ '+TG.M[TG.M.length-1]+' · '+TG.rows.length.toLocaleString('ko-KR')+'종목'+((TG.pend&&TG.pend.length)?' · * '+TG.pend.length+'종목은 '+TG.P[TG.P.length-1]+' 보고서 대기':'');
+  document.getElementById('tgBase').textContent=((TG.RP&&TG.RP.length)?'· 매출 '+TG.RP[0]+' ~ '+TG.RP[TG.RP.length-1]+' ':'')+'· 재고·수주 '+tgPLraw(TG.P[0])+' ~ '+TG.P[TG.P.length-1]+' (DART 보고서) · 국민연금 '+TG.M[0]+' ~ '+TG.M[TG.M.length-1]+' · '+TG.rows.length.toLocaleString('ko-KR')+'종목'+((TG.pend&&TG.pend.length)?' · * '+TG.pend.length+'종목은 '+TG.P[TG.P.length-1]+' 보고서 대기':'');
 }else{const p=document.querySelector('.vtab[data-v="t"]');if(p)p.remove();}
 function tgPLraw(k){return k.endsWith('4Q')?k.slice(0,2)+'년':k;}
 """
