@@ -44,6 +44,11 @@ html.tg-on #main,html.tg-on #loading,html.tg-on #gate,html.tg-on #sujuView{displ
 #tgSecPop .b{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 10px;margin-top:4px;cursor:pointer;white-space:nowrap}
 #tgSecPop .b:hover{border-color:var(--grn)}#tgSecPop .b.on{background:var(--grn);border-color:var(--grn);color:#08131f}
 #tgSecPop .x{color:var(--red)}
+#tgSecPop .nw{display:flex;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+#tgSecPop .nw input{flex:1;min-width:0;width:110px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--tx);padding:4px 8px;font-size:12px;outline:none;font-family:inherit}
+#tgSecPop .nw input:focus{border-color:var(--grn)}
+#tgSecPop .b2{background:var(--grn);color:#08131f;border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-weight:600}
+.tgdel{margin-left:2px;color:inherit;opacity:.65;font-weight:700}.tgdel:hover{opacity:1;color:var(--red)}
 """
 
 PILL = '<span class="vtab" data-v="t" onclick="sjView(\'t\')">통합</span>'
@@ -81,7 +86,7 @@ VIEW = r"""<div id="tgView"><div class="card">
 </div>
 <div style="max-height:75vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table id="tgT"></table></div>
 <div id="tgMore" style="margin-top:6px"></div>
-<div style="margin-top:8px;font-size:11.5px;color:var(--tx2);line-height:1.6">열 제목 클릭 = 정렬 · ▸ = 그 종목 전 기간 차트·숫자 + 인원검색 연결 · 노란 ☆ = 관심종목(수주+재고 탭과 같은 목록) · <b style="color:var(--grn)">초록 ☆</b> = 섹터(반도체 장비·소재·부품·우주·화장품) — 누르면 섹터를 고르거나 빼고, 제목 옆 섹터 칩으로 섹터별로 봄. 처음엔 시총 3000억 이상 137종목을 임의로 나눠 둠 · 노란 별·초록 별 모두 집·사무실 PC 공유 · 종목명 옆 <b style="color:var(--acc2)">*</b> = 최근 분기 보고서를 DART에서 아직 못 받은 종목(그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준)<br>
+<div style="margin-top:8px;font-size:11.5px;color:var(--tx2);line-height:1.6">열 제목 클릭 = 정렬 · ▸ = 그 종목 전 기간 차트·숫자 + 인원검색 연결 · 노란 ☆ = 관심종목(수주+재고 탭과 같은 목록) · <b style="color:var(--grn)">초록 ☆</b> = 섹터(반도체 장비·소재·부품·우주·화장품) — 누르면 섹터를 고르거나 빼고, 아래 칸에 이름을 써서 새 섹터도 만듦(만든 섹터는 칩의 ×로 지움). 제목 옆 섹터 칩으로 섹터별로 봄. 처음엔 시총 3000억 이상 137종목을 임의로 나눠 둠 · 노란 별·초록 별 모두 집·사무실 PC 공유 · 종목명 옆 <b style="color:var(--acc2)">*</b> = 최근 분기 보고서를 DART에서 아직 못 받은 종목(그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준)<br>
 매출액(억원): 분기 3개월 매출, DART 보고서의 XBRL 매출 태그(연결 우선, 연결 없으면 별도) · 태그가 25.3Q 보고서부터 붙어 있어 24.3Q부터(전년 같은 분기 값 이용) · 4분기 = 연간 − 3분기 누적 · 숫자 4칸·QoQ·YoY는 재고와 같은 방식<br>
 재고자산·수주잔고(억원): DART 사업·반기·분기보고서에서 직접 뽑은 값(연결 우선) · 추이선은 21~24년 연말 → 25.1Q부터 분기 · 숫자 4칸 = 최근 4개 분기 · QoQ = 그 회사 최근 분기의 직전 분기 대비 · YoY = 전년 같은 분기 대비 · 외화로만 적힌 수주잔고는 비어 있음(▸에 원문 금액)<br>
 국민연금(명): 매칭 사업장 합계(직원수 조건 = 최근 달 인원) ·추이선은 22.12·23.12·24.12 연말 → 25.12부터 월별 · 숫자 4칸 = 분기말 달 · MoM = 전월 대비 · YTD = 전년 12월 대비 · 순위 = 분기말 시점(22.12·23.12·24.12·25.12·26.3·26.6·26.9) 중 최근 달 인원이 몇 번째로 많은지(1 = 가장 많음) · 시가총액은 수주+재고 탭(26.3) 기준</div>
@@ -92,17 +97,32 @@ JS = r"""
 const TG=__TONGHAP__;
 let tgSort={k:'cap',d:-1},tgOpen=new Set(),tgAll=false,TGX=[];
 const TGSECS=['반도체 장비','소재','부품','우주','화장품'],TGSEC_DEF={"한미반도체":"반도체 장비","주성엔지니어링":"반도체 장비","원익IPS":"반도체 장비","이오테크닉스":"반도체 장비","피에스케이홀딩스":"반도체 장비","피에스케이":"반도체 장비","HPSP":"반도체 장비","유진테크":"반도체 장비","테스":"반도체 장비","고영":"반도체 장비","케이씨텍":"반도체 장비","파크시스템스":"반도체 장비","테크윙":"반도체 장비","브이엠":"반도체 장비","와이씨":"반도체 장비","디아이":"반도체 장비","엑시콘":"반도체 장비","네오셈":"반도체 장비","인텍플러스":"반도체 장비","기가비스":"반도체 장비","프로텍":"반도체 장비","필옵틱스":"반도체 장비","예스티":"반도체 장비","제우스":"반도체 장비","에스티아이":"반도체 장비","한양이엔지":"반도체 장비","케이씨":"반도체 장비","GST":"반도체 장비","선익시스템":"반도체 장비","SFA":"반도체 장비","코세스":"반도체 장비","솔브레인":"소재","동진쎄미켐":"소재","한솔케미칼":"소재","후성":"소재","원익머트리얼즈":"소재","이엔에프테크놀로지":"소재","레이크머티리얼즈":"소재","덕산네오룩스":"소재","덕산하이메탈":"소재","에스앤에스텍":"소재","에프에스티":"소재","엘티씨":"소재","켐트로닉스":"소재","이녹스첨단소재":"소재","PI첨단소재":"소재","솔루스첨단소재":"소재","대주전자재료":"소재","나노신소재":"소재","SKC":"소재","에코프로":"소재","에코프로비엠":"소재","에코프로머티":"소재","엘앤에프":"소재","포스코퓨처엠":"소재","코스모신소재":"소재","천보":"소재","엔켐":"소재","롯데에너지머티리얼즈":"소재","SK아이이테크놀로지":"소재","성일하이텍":"소재","이수스페셜티케미컬":"소재","HS효성첨단소재":"소재","LS머트리얼즈":"소재","고려아연":"소재","코스모화학":"소재","리노공업":"부품","ISC":"부품","티에스이":"부품","원익QnC":"부품","하나머티리얼즈":"부품","티씨케이":"부품","월덱스":"부품","코미코":"부품","미코":"부품","샘씨엔에스":"부품","마이크로컨텍솔":"부품","오킨스전자":"부품","티에프이":"부품","타이거일렉":"부품","뉴파워프라즈마":"부품","메카로":"부품","아스플로":"부품","하나마이크론":"부품","두산테스나":"부품","네패스":"부품","SFA반도체":"부품","에이팩트":"부품","이수페타시스":"부품","대덕전자":"부품","코리아써키트":"부품","티엘비":"부품","해성디에스":"부품","심텍":"부품","삼성전기":"부품","LG이노텍":"부품","삼화콘덴서":"부품","자화전자":"부품","비에이치":"부품","솔루엠":"부품","서진시스템":"부품","성호전자":"부품","RFHIC":"부품","서울반도체":"부품","서울바이오시스":"부품","광전자":"부품","빛과전자":"부품","우리로":"부품","아이쓰리시스템":"부품","드림텍":"부품","한솔테크닉스":"부품","한양디지텍":"부품","제이앤티씨":"부품","한국단자":"부품","상신이디피":"부품","비나텍":"부품","RF머트리얼즈":"부품","한화에어로스페이스":"우주","한국항공우주":"우주","한화시스템":"우주","LIG디펜스앤에어로스페이스":"우주","쎄트렉아이":"우주","인텔리안테크":"우주","스피어":"우주","에이치브이엠":"우주","아모레퍼시픽":"화장품","아모레퍼시픽홀딩스":"화장품","LG생활건강":"화장품","코스맥스":"화장품","한국콜마":"화장품","에이피알":"화장품","달바글로벌":"화장품","코스메카코리아":"화장품","실리콘투":"화장품","펌텍코리아":"화장품","브이티":"화장품","네오팜":"화장품"};
-let tgSec={},tgSecV='',tgSecRef=null;
+let tgSec={},tgSecV='',tgSecRef=null,tgSecCustom=[];
 try{const a=JSON.parse(localStorage.getItem('pd_tg_sec')||'[]');if(Array.isArray(a))a.forEach(p=>{tgSec[p[0]]=p[1];});}catch(e){}
+try{const a=JSON.parse(localStorage.getItem('pd_tg_secn')||'[]');if(Array.isArray(a))tgSecCustom=a.filter(x=>typeof x==='string'&&x);}catch(e){}
 function tgSecOf(n){return Object.prototype.hasOwnProperty.call(tgSec,n)?tgSec[n]:(TGSEC_DEF[n]||'');}
 function tgSecList(){return Object.keys(tgSec).map(k=>[k,tgSec[k]]);}
-function tgSecSave(){const a=tgSecList();try{localStorage.setItem('pd_tg_sec',JSON.stringify(a));}catch(e){}if(tgSecRef)tgSecRef.set({list:a.slice(0,5000)}).catch(()=>{});}
-function tgSecSel(s){tgSecV=s;tgAll=false;tgRender();}
-function tgSecSet(i,s){const n=TG.rows[i][0];if(s===(TGSEC_DEF[n]||''))delete tgSec[n];else tgSec[n]=s;tgSecSave();const p=document.getElementById('tgSecPop');if(p)p.style.display='none';tgRender();}
+function tgSecAll(){const a=TGSECS.slice();tgSecCustom.forEach(s=>{if(!a.includes(s))a.push(s);});Object.values(tgSec).forEach(s=>{if(s&&!a.includes(s))a.push(s);});return a;}
+function tgSecSave(){const a=tgSecList();try{localStorage.setItem('pd_tg_sec',JSON.stringify(a));localStorage.setItem('pd_tg_secn',JSON.stringify(tgSecCustom));}catch(e){}if(tgSecRef)tgSecRef.set({list:a.slice(0,5000),names:tgSecCustom.slice(0,200)}).catch(()=>{});}
+function tgSecSel(k){tgSecV=k===''?'':tgSecAll()[k];tgAll=false;tgRender();}
+function tgSecClose(){const p=document.getElementById('tgSecPop');if(p)p.style.display='none';}
+function tgSecPut(i,s){const n=TG.rows[i][0];if(s===(TGSEC_DEF[n]||''))delete tgSec[n];else tgSec[n]=s;tgSecSave();tgSecClose();tgRender();}
+function tgSecSet(i,k){tgSecPut(i,k===''?'':tgSecAll()[k]);}
+function tgSecNew(i){const el=document.getElementById('tgSecNew'),s=(el.value||'').trim().replace(/\s+/g,' ').slice(0,20);
+  if(!s){el.focus();return;}
+  if(!tgSecAll().includes(s))tgSecCustom.push(s);
+  tgSecPut(i,s);}
+function tgSecDel(k,ev){ev.stopPropagation();const s=tgSecAll()[k];if(!s||TGSECS.includes(s))return;
+  const n=Object.keys(tgSec).filter(x=>tgSec[x]===s).length;
+  if(!confirm('"'+s+'" 섹터를 지울까요?'+(n?' (들어 있는 '+n+'종목은 섹터에서 빠집니다)':'')))return;
+  Object.keys(tgSec).forEach(x=>{if(tgSec[x]===s)delete tgSec[x];});
+  tgSecCustom=tgSecCustom.filter(x=>x!==s);if(tgSecV===s)tgSecV='';tgSecSave();tgRender();}
 function tgSecPick(i,ev){ev.stopPropagation();let p=document.getElementById('tgSecPop');
-  if(!p){p=document.createElement('div');p.id='tgSecPop';document.body.appendChild(p);p.addEventListener('click',e=>e.stopPropagation());document.addEventListener('click',()=>{p.style.display='none';});}
-  const n=TG.rows[i][0],cur=tgSecOf(n);
-  p.innerHTML='<div class="t">'+esc(n)+' · 섹터 고르기</div>'+TGSECS.map(s=>'<div class="b'+(s===cur?' on':'')+'" onclick="tgSecSet('+i+',\''+s+'\')">'+(s===cur?'✓ ':'')+s+'</div>').join('')+(cur?'<div class="b x" onclick="tgSecSet('+i+',\'\')">섹터에서 빼기</div>':'');
+  if(!p){p=document.createElement('div');p.id='tgSecPop';document.body.appendChild(p);p.addEventListener('click',e=>e.stopPropagation());document.addEventListener('click',tgSecClose);}
+  const n=TG.rows[i][0],cur=tgSecOf(n),all=tgSecAll();
+  p.innerHTML='<div class="t">'+esc(n)+' · 섹터 고르기</div>'+all.map((s,k)=>'<div class="b'+(s===cur?' on':'')+'" onclick="tgSecSet('+i+','+k+')">'+(s===cur?'✓ ':'')+esc(s)+'</div>').join('')
+    +'<div class="nw"><input id="tgSecNew" maxlength="20" placeholder="새 섹터 이름" onkeydown="if(event.key===\'Enter\')tgSecNew('+i+')"><span class="b2" onclick="tgSecNew('+i+')">＋ 만들기</span></div>'
+    +(cur?'<div class="b x" onclick="tgSecSet('+i+',\'\')">섹터에서 빼기</div>':'');
   const b=ev.target.getBoundingClientRect();p.style.display='block';
   p.style.left=Math.max(4,Math.min(b.left,innerWidth-p.offsetWidth-8))+'px';p.style.top=Math.max(4,Math.min(b.bottom+4,innerHeight-p.offsetHeight-8))+'px';}
 (async function tgSecSync(){try{
@@ -113,10 +133,12 @@ function tgSecPick(i,ev){ev.stopPropagation();let p=document.getElementById('tgS
   const ref=db.doc('data/users/'+uid+'/tgsector');
   const snap=await ref.get();
   const d=snap&&snap.exists?(snap.data()||{}):{};
-  const remote=Array.isArray(d.list)?d.list:null,before=JSON.stringify(remote||[]);
+  const remote=Array.isArray(d.list)?d.list:null,rn=Array.isArray(d.names)?d.names:[];
+  const before=JSON.stringify([remote||[],rn]);
   tgSecRef=ref;
   if(remote){const loc=tgSec;tgSec={};remote.forEach(p=>{tgSec[p[0]]=p[1];});Object.keys(loc).forEach(k=>{if(!(k in tgSec))tgSec[k]=loc[k];});}
-  if(JSON.stringify(tgSecList())!==before)tgSecSave();else{try{localStorage.setItem('pd_tg_sec',before);}catch(e){}}
+  const nm=rn.slice();tgSecCustom.forEach(s=>{if(!nm.includes(s))nm.push(s);});tgSecCustom=nm;
+  if(JSON.stringify([tgSecList(),tgSecCustom])!==before)tgSecSave();else{try{localStorage.setItem('pd_tg_sec',JSON.stringify(tgSecList()));localStorage.setItem('pd_tg_secn',JSON.stringify(tgSecCustom));}catch(e){}}
   if(document.documentElement.classList.contains('tg-on'))tgRender();
 }catch(err){}})();
 function tgMoney(e){if(e==null)return '';const a=Math.abs(e);if(a>=10000)return (e/10000).toLocaleString('ko-KR',{maximumFractionDigits:a>=1000000?1:2})+'조';if(a>=10)return Math.round(e).toLocaleString('ko-KR')+'억';return e.toLocaleString('ko-KR',{maximumFractionDigits:1})+'억';}
@@ -220,7 +242,7 @@ function tgRender(){
   const pn=x=>x==null?'':x.toLocaleString('ko-KR');
   for(let n=0;n<lim;n++){const o=R[n],r=o.r,on=ws.has(r[0]),op=tgOpen.has(o.i);
     h+='<tr class="r'+(op?' op':'')+'"><td style="color:var(--tx2)">'+(n+1)+'</td>'
-      +'<td class="nm" title="'+esc(r[0])+'"><span class="sjst'+(on?' on':'')+'" onclick="tgStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+(()=>{const s=tgSecOf(r[0]);return '<span class="tgsec'+(s?' on':'')+'" onclick="tgSecPick('+o.i+',event)" title="'+(s?'섹터: '+s+' (눌러서 바꾸기)':'섹터 지정')+'">'+(s?'★':'☆')+'</span>';})()+esc(r[0])+(o.pq?'<span class="pend" title="'+TG.P[TG.P.length-1]+' 보고서를 DART에서 아직 못 받음 — 그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준">*</span>':'')+'<span class="mk">'+(r[1]==='P'?'코스피':r[1]==='Q'?'코스닥':'')+'</span></td>'
+      +'<td class="nm" title="'+esc(r[0])+'"><span class="sjst'+(on?' on':'')+'" onclick="tgStar('+o.i+')" title="'+(on?'관심종목에서 빼기':'관심종목에 추가')+'">'+(on?'★':'☆')+'</span>'+(()=>{const s=tgSecOf(r[0]);return '<span class="tgsec'+(s?' on':'')+'" onclick="tgSecPick('+o.i+',event)" title="'+(s?'섹터: '+esc(s)+' (눌러서 바꾸기)':'섹터 지정')+'">'+(s?'★':'☆')+'</span>';})()+esc(r[0])+(o.pq?'<span class="pend" title="'+TG.P[TG.P.length-1]+' 보고서를 DART에서 아직 못 받음 — 그 분기 칸은 빈칸, QoQ·YoY는 그 전 분기 기준">*</span>':'')+'<span class="mk">'+(r[1]==='P'?'코스피':r[1]==='Q'?'코스닥':'')+'</span></td>'
       +'<td>'+tgMoney(o.cap)+'</td>'
       +'<td class="sp g0">'+tgSpk(r[9])+'</td>'
       +'<td class="sp">'+tgSpk(r[3])+'</td>'
@@ -235,7 +257,7 @@ function tgRender(){
   document.getElementById('tgMore').innerHTML=R.length>lim?'<span class="chip" onclick="tgAll=true;tgRender()">나머지 '+(R.length-lim).toLocaleString('ko-KR')+'종목 더 보기</span>':'';
   document.getElementById('tgStat').textContent=R.length.toLocaleString('ko-KR')+' / '+TGX.length.toLocaleString('ko-KR')+'종목';
   const sc={};TGX.forEach(o=>{const s=tgSecOf(o.r[0]);if(s)sc[s]=(sc[s]||0)+1;});
-  document.getElementById('tgSecTabs').innerHTML='<span class="sjsub tgsc'+(tgSecV===''?' on':'')+'" onclick="tgSecSel(\'\')">전체</span>'+TGSECS.map(s=>'<span class="sjsub tgsc'+(tgSecV===s?' on':'')+'" onclick="tgSecSel(\''+s+'\')">'+s+' '+(sc[s]||0)+'</span>').join('');
+  document.getElementById('tgSecTabs').innerHTML='<span class="sjsub tgsc'+(tgSecV===''?' on':'')+'" onclick="tgSecSel(\'\')">전체</span>'+tgSecAll().map((s,k)=>'<span class="sjsub tgsc'+(tgSecV===s?' on':'')+'" onclick="tgSecSel('+k+')">'+esc(s)+' '+(sc[s]||0)+(TGSECS.includes(s)?'':' <span class="tgdel" onclick="tgSecDel('+k+',event)" title="이 섹터 지우기">×</span>')+'</span>').join('');
   document.getElementById('tgWN').textContent=sjW.length;
 }
 if(TG){
